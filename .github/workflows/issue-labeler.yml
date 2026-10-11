@@ -1,0 +1,170 @@
+name: Issue Type Labeler
+
+# Reusable workflow: applies a `bug` or `enhancement` label to open issues that
+# have neither. Issues created through the API or `gh issue create` (as AI
+# agents do) skip the issue-form `labels:` defaults, and fork contributors
+# cannot add labels themselves. CodeRabbit only generates a coding plan once
+# one of these labels is present, so this closes that gap.
+#
+# Classification, strongest signal first:
+#   1. Title prefix: "[Bug]:", "[BUG]", "[Enhancement]:", "[FEATURE]", "feat:", ...
+#   2. Issue-form headings left in the body by the bug/enhancement templates.
+#   3. Keyword scoring on title and body (only when one side clearly wins).
+# Ambiguous issues are left for CodeRabbit's own labeling. Existing labels are
+# never removed, and a type label a maintainer removed is never re-added.
+
+on:
+  workflow_call:
+    inputs:
+      skip-labels:
+        description: Comma-separated labels that opt an issue out of type labeling.
+        type: string
+        default: "question,duplicate,invalid,wontfix,no-type"
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    name: Apply bug/enhancement label
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Label untyped issues
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SKIP_LABELS: ${{ inputs.skip-labels }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const TYPE_LABELS = {
+              bug: { color: "d73a4a", description: "Something is not working" },
+              enhancement: { color: "a2eeef", description: "New feature or improvement request" },
+            };
+            const skipLabels = (process.env.SKIP_LABELS || "")
+              .split(",")
+              .map((s) => s.trim().toLowerCase())
+              .filter(Boolean);
+
+            const BUG_PREFIXES = new Set(["bug", "bug report", "bugfix", "fix", "hotfix", "defect", "regression"]);
+            const ENHANCEMENT_PREFIXES = new Set([
+              "enhancement", "enhancement request", "feature", "feature request", "feat", "request",
+              "improvement", "perf", "performance", "support", "device support", "refactor", "test", "tests", "docs", "documentation",
+            ]);
+            const BUG_HEADINGS = /^###\s+(?:What happened\?|Steps to reproduce)\s*$/im;
+            const ENHANCEMENT_HEADINGS = /^###\s+(?:Problem statement|Proposed solution and architecture|Acceptance criteria)\s*$/im;
+            const BUG_WORDS =
+              /\b(?:bugs?|errors?|crash(?:es|ed|ing)?|exceptions?|traceback|broken|fail(?:s|ed|ing|ure)?|regression|incorrect(?:ly)?|wrong|not working|(?:doesn't|does not|don't|do not) work|hangs?|stuck|missing|not (?:populated|used|updated|applied|created|shown|reported|detected|parsed)|returns? (?:empty|null|nothing|zero|0|false)|instead of|timed? ?out|disconnect(?:s|ed)?|unavailable)\b/gi;
+            // Enhancement titles usually start with an imperative verb ("Add ...", "Make ... optional").
+            const ENHANCEMENT_TITLE_VERB =
+              /^\s*(?:add|make|use|support|expose|allow|implement|migrate|enable|provide|create|introduce|track|show|ability to|option to)\b/i;
+            const ENHANCEMENT_WORDS =
+              /\b(?:features?|enhance(?:ment|s)?|add(?:s|ing)? support|support for|improve(?:s|ment)?|request(?:ing)?|new option|allow(?:s|ing)?|expose|would be (?:nice|great|useful))\b/gi;
+
+            function labelNames(issue) {
+              return (issue.labels || []).map((l) => (typeof l === "string" ? l : l.name).toLowerCase());
+            }
+
+            function classify(issue) {
+              const title = issue.title || "";
+              const body = issue.body || "";
+
+              const prefix = title.match(/^\s*(?:\[\s*([^\]]+?)\s*\]|([a-z][a-z -]*?)(?:\([^)]*\))?\s*:)/i);
+              if (prefix) {
+                const token = (prefix[1] || prefix[2]).toLowerCase();
+                if (BUG_PREFIXES.has(token)) return { label: "bug", reason: `title prefix "${token}"` };
+                if (ENHANCEMENT_PREFIXES.has(token)) return { label: "enhancement", reason: `title prefix "${token}"` };
+                if (token === "question") return { label: null, reason: "question" };
+              }
+
+              const bugForm = BUG_HEADINGS.test(body);
+              const enhancementForm = ENHANCEMENT_HEADINGS.test(body);
+              if (bugForm !== enhancementForm) {
+                return bugForm
+                  ? { label: "bug", reason: "bug report form" }
+                  : { label: "enhancement", reason: "enhancement request form" };
+              }
+
+              if ((ENHANCEMENT_TITLE_VERB.test(title) || /\bsupport\s*$/i.test(title)) && !/\bfix/i.test(title)) {
+                return { label: "enhancement", reason: "imperative title" };
+              }
+
+              const count = (re, text) => (text.match(re) || []).length;
+              const bug = 3 * count(BUG_WORDS, title) + count(BUG_WORDS, body);
+              const enhancement = 3 * count(ENHANCEMENT_WORDS, title) + count(ENHANCEMENT_WORDS, body);
+              if (bug >= 3 && bug >= 2 * enhancement) return { label: "bug", reason: `keywords ${bug}:${enhancement}` };
+              if (enhancement >= 3 && enhancement >= 2 * bug) {
+                return { label: "enhancement", reason: `keywords ${enhancement}:${bug}` };
+              }
+              return { label: null, reason: `ambiguous keywords bug=${bug} enhancement=${enhancement}` };
+            }
+
+            async function ensureLabel(name) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({ owner, repo, name, ...TYPE_LABELS[name] });
+              }
+            }
+
+            async function typeLabelWasRemoved(issueNumber) {
+              const events = await github.paginate(github.rest.issues.listEvents, {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                per_page: 100,
+              });
+              return events.some(
+                (e) => e.event === "unlabeled" && e.label && e.label.name.toLowerCase() in TYPE_LABELS,
+              );
+            }
+
+            const results = [];
+            async function processIssue(number) {
+              // Re-fetch so labels added since the event fired (e.g. by CodeRabbit) are seen.
+              const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: number });
+              if (issue.pull_request || issue.state !== "open") return;
+              const names = labelNames(issue);
+              if (names.some((n) => n in TYPE_LABELS)) return;
+              if (names.some((n) => skipLabels.includes(n))) {
+                core.info(`#${number}: skipped (opt-out label)`);
+                return;
+              }
+              const { label, reason } = classify(issue);
+              if (!label) {
+                core.info(`#${number}: left unlabeled (${reason})`);
+                results.push([`#${number}`, "-", reason]);
+                return;
+              }
+              if (await typeLabelWasRemoved(number)) {
+                core.info(`#${number}: a maintainer removed a type label before; not re-adding`);
+                return;
+              }
+              await ensureLabel(label);
+              await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: [label] });
+              core.info(`#${number}: +${label} (${reason})`);
+              results.push([`#${number}`, label, reason]);
+            }
+
+            if (context.eventName === "issues") {
+              await processIssue(context.payload.issue.number);
+            } else {
+              const issues = await github.paginate(github.rest.issues.listForRepo, {
+                owner,
+                repo,
+                state: "open",
+                per_page: 100,
+              });
+              for (const issue of issues) {
+                if (!issue.pull_request) await processIssue(issue.number);
+              }
+            }
+
+            if (results.length > 0) {
+              await core.summary
+                .addHeading("Issue type labeling")
+                .addTable([[{ data: "Issue", header: true }, { data: "Label", header: true }, { data: "Reason", header: true }], ...results])
+                .write();
+            }

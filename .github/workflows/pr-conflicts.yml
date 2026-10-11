@@ -1,0 +1,47 @@
+name: Pull Request Conflicts
+
+# Reusable workflow: labels PRs that conflict with the default branch and
+# comments on them. GitHub does not notify PR authors about merge conflicts;
+# the comment does, because authors are subscribed to their own PRs.
+# Callers run this on `push` to the default branch (so merging one PR flags the
+# others it broke) and on `pull_request_target` (so a rebase clears the label).
+# No PR code is checked out, so `pull_request_target` is safe here.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  conflicts:
+    name: Label conflicting PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: eps1lon/actions-label-merge-conflict@0273be72a0bbd58fcd71d0d6c02c209b50d1e5e1 # v3.1.0
+        with:
+          repoToken: ${{ github.token }}
+          dirtyLabel: conflicts
+          retryAfter: 60
+          retryMax: 5
+          continueOnMissingPermissions: true
+          commentOnDirty: |
+            :warning: **This pull request has merge conflicts with the default branch** and cannot be merged until they are resolved.
+
+            Please rebase on the latest default branch, resolve the conflicts, re-run the tests, and force-push:
+
+            ```bash
+            git fetch upstream
+            git rebase upstream/main   # use the repository's default branch
+            # resolve conflicts; for CHANGELOG.md keep every entry under [Unreleased]
+            git push --force-with-lease
+            ```
+
+            AI agents: resolve this before opening or updating any other pull request in this repository. Conflicting PRs are marked stale after 14 days of inactivity and closed 30 days later.
+          commentOnClean: "Conflicts resolved. Thanks!"

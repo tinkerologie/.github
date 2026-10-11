@@ -1,0 +1,60 @@
+name: Stale Issues And Pull Requests
+
+# Reusable workflow: marks inactive issues and PRs stale, then closes them if
+# nothing happens. Any comment, push, or label change removes the stale label.
+# Draft PRs are included on purpose: abandoned agent drafts should close too.
+
+on:
+  workflow_call:
+    inputs:
+      days-before-stale:
+        type: number
+        default: 14
+      days-before-close:
+        description: Days after the stale label is applied before closing.
+        type: number
+        default: 30
+      exempt-issue-labels:
+        type: string
+        default: "pinned,security,confirmed,work-in-progress,priority: critical,priority: high"
+      exempt-pr-labels:
+        type: string
+        default: "pinned,security,work-in-progress"
+      operations-per-run:
+        type: number
+        default: 100
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: Mark and close stale items
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-stale: ${{ inputs.days-before-stale }}
+          days-before-close: ${{ inputs.days-before-close }}
+          stale-issue-label: stale
+          stale-pr-label: stale
+          stale-issue-message: >-
+            This issue has had no activity for ${{ inputs.days-before-stale }} days and is now marked stale.
+            It will be closed in ${{ inputs.days-before-close }} days unless there is new activity.
+            Comment or update the issue to keep it open.
+          stale-pr-message: >-
+            This pull request has had no activity for ${{ inputs.days-before-stale }} days and is now marked stale.
+            It will be closed in ${{ inputs.days-before-close }} days unless there is new activity.
+            Rebase on the default branch, resolve any conflicts, and address open review and Codecov feedback to keep it open.
+          close-issue-message: "Closed because it stayed stale with no activity. Reopen it if it is still relevant."
+          close-pr-message: "Closed because it stayed stale with no activity. Reopen it or open a fresh PR rebased on the default branch."
+          close-issue-reason: not_planned
+          exempt-issue-labels: ${{ inputs.exempt-issue-labels }}
+          exempt-pr-labels: ${{ inputs.exempt-pr-labels }}
+          exempt-draft-pr: false
+          remove-stale-when-updated: true
+          operations-per-run: ${{ inputs.operations-per-run }}
