@@ -24,15 +24,18 @@ on:
         type: number
         default: 100
 
+# Callers must grant the same scopes; a called workflow cannot elevate them.
 permissions:
-  issues: write
-  pull-requests: write
+  actions: write # actions/stale saves its progress in the Actions cache when it hits operations-per-run
+  issues: write # label, comment on, and close stale issues
+  pull-requests: write # label, comment on, and close stale pull requests
 
 jobs:
   stale:
     name: Mark and close stale items
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       issues: write
       pull-requests: write
     steps:

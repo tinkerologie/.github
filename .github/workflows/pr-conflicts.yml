@@ -10,10 +10,10 @@ name: Pull Request Conflicts
 on:
   workflow_call:
 
+# Callers must grant the same scopes; a called workflow cannot elevate them.
 permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+  contents: read # read the default branch to compute mergeability
+  pull-requests: write # add/remove the conflicts label and comment on pull requests
 
 jobs:
   conflicts:
@@ -21,7 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
       pull-requests: write
     steps:
       - uses: eps1lon/actions-label-merge-conflict@0273be72a0bbd58fcd71d0d6c02c209b50d1e5e1 # v3.1.0
@@ -32,13 +31,13 @@ jobs:
           retryMax: 5
           continueOnMissingPermissions: true
           commentOnDirty: |
-            :warning: **This pull request has merge conflicts with the default branch** and cannot be merged until they are resolved.
+            :warning: **This pull request has merge conflicts with `${{ github.event.repository.default_branch }}`** and cannot be merged until they are resolved.
 
-            Please rebase on the latest default branch, resolve the conflicts, re-run the tests, and force-push:
+            Please rebase on the latest `${{ github.event.repository.default_branch }}`, resolve the conflicts, re-run the tests, and force-push:
 
             ```bash
             git fetch upstream
-            git rebase upstream/main   # use the repository's default branch
+            git rebase upstream/${{ github.event.repository.default_branch }}
             # resolve conflicts; for CHANGELOG.md keep every entry under [Unreleased]
             git push --force-with-lease
             ```

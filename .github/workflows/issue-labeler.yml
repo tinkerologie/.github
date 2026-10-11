@@ -21,8 +21,9 @@ on:
         type: string
         default: "question,duplicate,invalid,wontfix,no-type"
 
+# Callers must grant the same scope; a called workflow cannot elevate it.
 permissions:
-  issues: write
+  issues: write # add bug/enhancement labels, and create them if missing
 
 jobs:
   label:
