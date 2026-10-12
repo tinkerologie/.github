@@ -1,5 +1,7 @@
 # Contribution Governance
 
+Repository layout and naming conventions are in [STANDARDS.md](STANDARDS.md).
+
 These rules apply to every tinkerologie repository and to every contributor,
 including AI coding agents (Codex, Claude Code, Copilot, and others).
 
@@ -72,6 +74,7 @@ Shared reusable workflows live in [`.github/workflows`](.github/workflows):
 | `pr-conflicts.yml` | Labels and comments on PRs that conflict with the default branch |
 | `stale.yml` | Marks inactive issues and PRs stale, then closes them |
 | `governance-report.yml` | Tinkerologie-Bot comment listing PR governance problems to fix |
+| `label-sync.yml` | Syncs the organization label set ([labels.json](labels.json)) to every repository |
 
 Each repository calls them from small caller workflows, for example:
 

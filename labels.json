@@ -1,0 +1,31 @@
+[
+  { "name": "bug", "color": "d73a4a", "description": "Something is not working" },
+  { "name": "enhancement", "color": "a2eeef", "description": "New feature or improvement request" },
+  { "name": "documentation", "color": "0075ca", "description": "Documentation changes" },
+  { "name": "question", "color": "d876e3", "description": "Question or request for clarification" },
+  { "name": "dependencies", "color": "0366d6", "description": "Dependency updates" },
+  { "name": "security", "color": "b60205", "description": "Security issue; exempt from stale handling" },
+
+  { "name": "triage", "color": "fbca04", "description": "Needs initial review" },
+  { "name": "confirmed", "color": "0e8a16", "description": "Confirmed bug or accepted request; exempts issues from stale handling" },
+  { "name": "blocked", "color": "e11d21", "description": "Blocked by missing information or other work" },
+  { "name": "work-in-progress", "color": "c2e0c6", "description": "Actively being worked on; exempt from stale handling" },
+  { "name": "stale", "color": "ededed", "description": "No recent activity; closes automatically unless updated" },
+  { "name": "conflicts", "color": "e99695", "description": "Has merge conflicts with the default branch" },
+
+  { "name": "priority: critical", "color": "b60205", "description": "Critical priority; exempts issues (not PRs) from stale handling" },
+  { "name": "priority: high", "color": "d93f0b", "description": "High priority; exempts issues (not PRs) from stale handling" },
+  { "name": "priority: medium", "color": "fbca04", "description": "Medium priority" },
+  { "name": "priority: low", "color": "0e8a16", "description": "Low priority" },
+
+  { "name": "duplicate", "color": "cfd3d7", "description": "Duplicates an existing issue or pull request" },
+  { "name": "invalid", "color": "e4e669", "description": "Not a valid issue or request" },
+  { "name": "wontfix", "color": "ffffff", "description": "Will not be worked on" },
+
+  { "name": "good first issue", "color": "7057ff", "description": "Good for newcomers" },
+  { "name": "help wanted", "color": "008672", "description": "Extra attention is needed" },
+
+  { "name": "pinned", "color": "006b75", "description": "Pinned; exempt from stale handling" },
+  { "name": "no-type", "color": "cfd3d7", "description": "Opt out of automatic bug/enhancement labeling" },
+  { "name": "no-plan", "color": "cfd3d7", "description": "Opt out of CodeRabbit automatic planning" }
+]

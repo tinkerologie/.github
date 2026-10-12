@@ -1,0 +1,99 @@
+name: Label Sync
+
+# Syncs the organization label set in labels.json to every tinkerologie
+# repository the Tinkerologie-Bot app is installed on. Labels are created or
+# updated (colour, description) but never deleted, so repository-specific
+# `area: <name>` labels are left alone.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - labels.json
+      - .github/workflows/label-sync.yml
+  schedule:
+    - cron: "11 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: label-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Mint Tinkerologie-Bot token for all repositories
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.TINKER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.TINKER_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-issues: write # create and update labels
+
+      - name: Sync labels
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.token.outputs.token }}
+          script: |
+            const fs = require("fs");
+            const wanted = JSON.parse(fs.readFileSync("labels.json", "utf8"));
+            const owner = context.repo.owner;
+
+            const repos = (
+              await github.paginate(github.rest.apps.listReposAccessibleToInstallation, { per_page: 100 })
+            ).filter((r) => !r.archived);
+
+            const summary = [];
+            for (const r of repos) {
+              const existing = await github.paginate(github.rest.issues.listLabelsForRepo, {
+                owner,
+                repo: r.name,
+                per_page: 100,
+              });
+              const byName = new Map(existing.map((l) => [l.name.toLowerCase(), l]));
+              let created = 0;
+              let updated = 0;
+              for (const label of wanted) {
+                const current = byName.get(label.name.toLowerCase());
+                if (!current) {
+                  await github.rest.issues.createLabel({ owner, repo: r.name, ...label });
+                  created++;
+                } else if (
+                  current.name !== label.name ||
+                  current.color.toLowerCase() !== label.color.toLowerCase() ||
+                  (current.description || "") !== label.description
+                ) {
+                  await github.rest.issues.updateLabel({
+                    owner,
+                    repo: r.name,
+                    name: current.name,
+                    new_name: label.name,
+                    color: label.color,
+                    description: label.description,
+                  });
+                  updated++;
+                }
+              }
+              core.info(`${r.name}: ${created} created, ${updated} updated`);
+              summary.push([r.name, String(created), String(updated)]);
+            }
+
+            await core.summary
+              .addHeading("Label Sync")
+              .addTable([
+                [{ data: "Repository", header: true }, { data: "Created", header: true }, { data: "Updated", header: true }],
+                ...summary,
+              ])
+              .write();
