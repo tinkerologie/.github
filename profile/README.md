@@ -129,7 +129,7 @@ flowchart LR
 <br>
 
 - [**recyclarr-config**](https://github.com/tinkerologie/recyclarr-config): Recyclarr configuration built on the TRaSH Guides.
-- [**coderabbit**](https://github.com/tinkerologie/coderabbit): shared CodeRabbit review configuration for every repository.
+- [**coderabbit**](https://github.com/tinkerologie/coderabbit): Shared CodeRabbit review configuration for every repository.
 
 </details>
 
