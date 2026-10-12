@@ -28,7 +28,9 @@ In the PR template's **Related Issues** section, use one of:
 | `Closes #123`, `Fixes #123`, `Resolves #123` (any tense) | Links the issue and closes it on merge; use only when the PR completely resolves it |
 | `Part of #123`, `Related to #123`, `Addresses #123`, `Implements #123` | Links without closing; use for partial work |
 | `owner/repo#123` or a full issue URL | Cross-repository reference |
-| `None` | Maintainer housekeeping only (CI, documentation, dependency updates) |
+
+A linked issue in the same repository must exist; a reference to a missing issue fails the check.
+| `None` | Maintainers with write access only, for housekeeping (CI, documentation, dependency updates). PR governance rejects it from everyone else. |
 
 ## 3. One change at a time
 
