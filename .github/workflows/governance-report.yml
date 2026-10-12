@@ -24,6 +24,10 @@ on:
         description: JSON array of governance error messages from the governance job.
         type: string
         default: "[]"
+      check-name:
+        description: Name of the governance check run (the governance job's name).
+        type: string
+        default: PR Governance
       client-id:
         description: Tinkerologie-Bot GitHub App client ID (org variable TINKER_BOT_CLIENT_ID).
         type: string
@@ -73,6 +77,7 @@ jobs:
           # Also required: GitHub Apps get 403 "Resource not accessible by integration"
           # when commenting on a pull request with issues: write alone.
           permission-pull-requests: write
+          permission-checks: read # find newer governance runs for the same pull request
 
       - name: Post or update the governance comment
         if: steps.credentials.outputs.ready == 'true'
@@ -82,6 +87,7 @@ jobs:
           RESULT: ${{ inputs.result }}
           ERRORS: ${{ inputs.errors }}
           RUN_ID: ${{ github.run_id }}
+          CHECK_NAME: ${{ inputs.check-name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BOT_LOGIN: ${{ steps.token.outputs.app-slug }}[bot]
         with:
@@ -313,6 +319,31 @@ jobs:
             body = `${body}\n${RUN_STAMP(runId)}`;
             if (body.length > MAX_BODY) {
               body = `${body.slice(0, MAX_BODY)}\n\n… report truncated; see the [check details](${runUrl}).\n${RUN_STAMP(runId)}`;
+            }
+
+            // Stand down if a newer governance run exists for this pull request: it reports
+            // the current state (or, if it passed first time, correctly posts nothing).
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: issue_number });
+            const ourHead = context.payload.pull_request && context.payload.pull_request.head.sha;
+            if (ourHead && pr.head.sha !== ourHead) {
+              core.info(`The pull request has newer commits (${pr.head.sha.slice(0, 7)}); skipping this report.`);
+              return;
+            }
+            const governanceRuns = await github.paginate(github.rest.checks.listForRef, {
+              owner,
+              repo,
+              ref: pr.head.sha,
+              check_name: process.env.CHECK_NAME,
+              filter: "all",
+              per_page: 100,
+            });
+            const newestRun = Math.max(
+              0,
+              ...governanceRuns.map((r) => Number(((r.details_url || "").match(/\/runs\/(\d+)/) || [])[1] || 0)),
+            );
+            if (newestRun > runId) {
+              core.info(`A newer governance run (${newestRun}) exists for this pull request; skipping this report.`);
+              return;
             }
 
             // Re-read just before writing so a run that finishes late never replaces a newer report.
