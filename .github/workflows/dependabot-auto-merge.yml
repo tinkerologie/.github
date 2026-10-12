@@ -1,8 +1,9 @@
 name: Dependabot Auto-merge
 
 # Reusable workflow: merges a Dependabot pull request that only contains patch or minor
-# updates once every other check on its head commit has passed. Major updates, and
-# updates Dependabot cannot classify, are left for a person.
+# updates once the other checks on its head commit have finished without a failure
+# (skipped and neutral results are fine). Major updates, and updates Dependabot cannot
+# classify, are left for a person.
 #
 # GitHub's own auto-merge (`gh pr merge --auto`) waits only for *required* checks. PR
 # Governance, the only required check, is skipped for Dependabot pull requests, so it
@@ -93,6 +94,18 @@ jobs:
           for attempt in $(seq 1 110); do
             sleep 30
             pending=(); failed=(); passed=0
+            # Read both APIs up front and stop on any failure: a lost response must never be
+            # mistaken for "no failing checks".
+            if ! runs="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?per_page=100" \
+              --jq '.check_runs[] | [.name, .status, (.conclusion // "-"), (.details_url // "-")] | @tsv')"; then
+              echo "::error::Could not read the check runs for ${HEAD_SHA}."
+              exit 1
+            fi
+            if ! statuses="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/status" \
+              --jq '.statuses[] | [.context, .state] | @tsv')"; then
+              echo "::error::Could not read the commit statuses for ${HEAD_SHA}."
+              exit 1
+            fi
             # Fields are never empty ("-" placeholders): tab is whitespace to `read`, so an
             # empty field would shift the rest.
             while IFS=$'\t' read -r name status conclusion url; do
@@ -107,8 +120,7 @@ jobs:
                   *) failed+=("$name=$conclusion") ;;
                 esac
               fi
-            done < <(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?per_page=100" \
-              --jq '.check_runs[] | [.name, .status, (.conclusion // "-"), (.details_url // "-")] | @tsv')
+            done <<< "$runs"
             while IFS=$'\t' read -r context state; do
               [ -z "$context" ] && continue
               case "$state" in
@@ -116,8 +128,7 @@ jobs:
                 pending) codecov "$context" || pending+=("$context") ;;
                 *) failed+=("$context=$state") ;;
               esac
-            done < <(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/status" \
-              --jq '.statuses[] | [.context, .state] | @tsv')
+            done <<< "$statuses"
 
             if [ "${#failed[@]}" -gt 0 ]; then
               echo "::error::Not merging: ${failed[*]}"

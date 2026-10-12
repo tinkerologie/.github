@@ -133,8 +133,8 @@ The organization label set below is synced to every repository by the
   `homebridge` (v2 is the supported runtime), and `@types/node`, which tracks the oldest
   Node version in `engines`.
 - `dependabot-auto-merge.yml` merges a Dependabot pull request whose largest update is a
-  patch or minor version once every other check and commit status on its head commit has
-  passed. A Codecov check that is still pending is not waited for (patch coverage never
+  patch or minor version once the other checks and commit statuses on its head commit have
+  finished without a failure (skipped and neutral results are fine). A Codecov check that is still pending is not waited for (patch coverage never
   reports on lock-file-only changes); a Codecov failure blocks the merge. GitHub's
   built-in auto-merge would not wait: it waits only for required checks, and PR
   Governance is skipped for Dependabot. Majors and grouped pull requests containing a
