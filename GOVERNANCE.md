@@ -13,7 +13,9 @@ including AI coding agents (Codex, Claude Code, Copilot, and others).
   space and the title.
   Issues created with `gh issue create` or the API skip the template's labels,
   so automation labels them `bug` or `enhancement` from the title prefix and
-  the template headings.
+  the template headings. It skips issues labeled `question`, `duplicate`,
+  `invalid`, `wontfix`, or `no-type`, leaves ambiguous issues for CodeRabbit,
+  and never re-adds a type label that a maintainer removed.
 - CodeRabbit posts a **Coding Plan** on the issue once it is labeled. Use that
   plan when implementing.
 
@@ -23,8 +25,8 @@ In the PR template's **Related Issues** section, use one of:
 
 | Keyword | Effect |
 | --- | --- |
-| `Closes #123`, `Fixes #123`, `Resolves #123` (any tense) | Links the issue and closes it on merge |
-| `Part of #123`, `Related to #123`, `Addresses #123`, `Implements #123` | Links without closing |
+| `Closes #123`, `Fixes #123`, `Resolves #123` (any tense) | Links the issue and closes it on merge; use only when the PR completely resolves it |
+| `Part of #123`, `Related to #123`, `Addresses #123`, `Implements #123` | Links without closing; use for partial work |
 | `owner/repo#123` or a full issue URL | Cross-repository reference |
 | `None` | Maintainer housekeeping only (CI, documentation, dependency updates) |
 
