@@ -135,10 +135,13 @@ The organization label set below is synced to every repository by the
   Node version in `engines`.
 - `dependabot-auto-merge.yml` merges a Dependabot pull request whose largest update is a
   patch or minor version once every other check and commit status on its head commit has
-  passed (Codecov excepted). GitHub's built-in auto-merge would not wait: it waits only
-  for required checks, and PR Governance is skipped for Dependabot. Majors and grouped
-  pull requests containing a major are left for a person, and open review threads still
-  block the merge.
+  passed. A Codecov check that is still pending is not waited for (patch coverage never
+  reports on lock-file-only changes); a Codecov failure blocks the merge. GitHub's
+  built-in auto-merge would not wait: it waits only for required checks, and PR
+  Governance is skipped for Dependabot. Majors and grouped pull requests containing a
+  major are left for a person, and open review threads still block the merge. After
+  re-running a failed check, re-run the Auto-merge job too (or comment
+  `@dependabot rebase`); nothing restarts it automatically.
 
 ## 7. Issues and pull requests
 

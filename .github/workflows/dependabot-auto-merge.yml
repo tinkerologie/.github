@@ -7,7 +7,12 @@ name: Dependabot Auto-merge
 # GitHub's own auto-merge (`gh pr merge --auto`) waits only for *required* checks. PR
 # Governance, the only required check, is skipped for Dependabot pull requests, so it
 # would merge before CI had run. This job waits for every check and commit status on the
-# head commit itself, and merges only if they all passed.
+# head commit itself, and merges only if they all passed. A Codecov check that is still
+# pending is not waited for (patch coverage never reports on lock-file-only changes), but
+# a Codecov failure blocks the merge like any other.
+#
+# If a check fails and is later re-run successfully, nothing restarts this workflow:
+# re-run the Auto-merge job too, or comment `@dependabot rebase` on the pull request.
 #
 # A merge still has to satisfy the branch ruleset: open review threads (CodeRabbit or
 # Copilot) block it, and the job then fails so the pull request is left for a person.
@@ -78,9 +83,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          # Checks that never settle or do not gate a dependency update: this run itself and
-          # Codecov (patch coverage stays pending on lock-file-only changes).
-          ignored() { [[ "$1" == *"/actions/runs/${GITHUB_RUN_ID}/"* || "$2" == codecov/* ]]; }
+          # This run itself never settles while it waits.
+          ignored() { [[ "$1" == *"/actions/runs/${GITHUB_RUN_ID}/"* ]]; }
+          # Codecov can stay pending forever on lock-file-only changes: do not wait for it,
+          # but do count its result once it reports.
+          codecov() { [[ "$1" == codecov/* ]]; }
 
           settled=0
           for attempt in $(seq 1 110); do
@@ -92,7 +99,7 @@ jobs:
               [ -z "$name" ] && continue
               ignored "$url" "$name" && continue
               if [ "$status" != completed ]; then
-                pending+=("$name")
+                codecov "$name" || pending+=("$name")
               else
                 case "$conclusion" in
                   success) passed=$((passed + 1)) ;;
@@ -104,10 +111,9 @@ jobs:
               --jq '.check_runs[] | [.name, .status, (.conclusion // "-"), (.details_url // "-")] | @tsv')
             while IFS=$'\t' read -r context state; do
               [ -z "$context" ] && continue
-              [[ "$context" == codecov/* ]] && continue
               case "$state" in
                 success) ;;
-                pending) pending+=("$context") ;;
+                pending) codecov "$context" || pending+=("$context") ;;
                 *) failed+=("$context=$state") ;;
               esac
             done < <(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/status" \
