@@ -1,0 +1,145 @@
+name: Governance Report
+
+# Reusable workflow: keeps one Tinkerologie-Bot comment on a pull request that
+# lists every PR governance problem as a numbered, actionable item, so
+# contributors and AI agents can fix them without opening the Actions logs.
+# The comment is updated in place on every run and switches to a pass message
+# once all problems are fixed. Nothing is posted for a PR that passes first time.
+#
+# Callers run this from their `pull_request_target` governance workflow after
+# the governance job, passing that job's result and error list. No PR code is
+# checked out or executed.
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        type: number
+        required: true
+      result:
+        description: Result of the governance job (success, failure, ...).
+        type: string
+        required: true
+      errors:
+        description: JSON array of governance error messages from the governance job.
+        type: string
+        default: "[]"
+      client-id:
+        description: Tinkerologie-Bot GitHub App client ID (org variable TINKER_BOT_CLIENT_ID).
+        type: string
+        required: true
+    secrets:
+      private-key:
+        description: Tinkerologie-Bot GitHub App private key (org secret TINKER_BOT_PRIVATE_KEY).
+        required: true
+
+permissions: {}
+
+jobs:
+  report:
+    name: Tinkerologie-Bot report
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Mint Tinkerologie-Bot token
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.client-id }}
+          private-key: ${{ secrets.private-key }}
+          repositories: ${{ github.event.repository.name }}
+          permission-issues: write # PR conversation comments use the issues API
+          permission-pull-requests: write
+
+      - name: Post or update the governance comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ inputs.pr-number }}
+          RESULT: ${{ inputs.result }}
+          ERRORS: ${{ inputs.errors }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BOT_LOGIN: ${{ steps.token.outputs.app-slug }}[bot]
+        with:
+          github-token: ${{ steps.token.outputs.token }}
+          script: |
+            const MARKER = "<!-- tinkerologie-bot:governance -->";
+            const GOVERNANCE_URL = "https://github.com/tinkerologie/.github/blob/main/GOVERNANCE.md";
+            const { owner, repo } = context.repo;
+            const issue_number = Number(process.env.PR_NUMBER);
+            const result = process.env.RESULT;
+            const runUrl = process.env.RUN_URL;
+
+            let errors = [];
+            try {
+              errors = JSON.parse(process.env.ERRORS || "[]");
+            } catch {
+              errors = [];
+            }
+            if (!Array.isArray(errors)) errors = [];
+
+            // Error messages quote text from the PR description: neutralise
+            // @mentions so the bot never pings anyone, and cap each item's length.
+            const clean = (text) =>
+              String(text)
+                .replace(/@/g, "@​")
+                .replace(/\r?\n/g, " ")
+                .slice(0, 1000);
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (c) => c.user && c.user.login === process.env.BOT_LOGIN && (c.body || "").includes(MARKER),
+            );
+
+            let body;
+            if (result === "success") {
+              if (!existing) {
+                core.info("Governance passed and there is no earlier report; nothing to post.");
+                return;
+              }
+              body = [
+                MARKER,
+                "### ✅ PR governance passed",
+                "",
+                "All governance checks pass. Thanks for fixing them!",
+              ].join("\n");
+            } else if (errors.length > 0) {
+              const noun = errors.length === 1 ? "problem" : "problems";
+              body = [
+                MARKER,
+                `### ❌ PR governance: ${errors.length} ${noun} to fix`,
+                "",
+                "This pull request cannot be reviewed or merged until these are fixed:",
+                "",
+                ...errors.map((error, i) => `${i + 1}. ${clean(error)}`),
+                "",
+                "**How to fix:** edit the pull request description, and push any missing changes such as the " +
+                  "`CHANGELOG.md` entry. The check re-runs automatically and this comment updates.",
+                "",
+                `Rules: [GOVERNANCE.md](${GOVERNANCE_URL}) · Details: [workflow run](${runUrl})`,
+              ].join("\n");
+            } else {
+              body = [
+                MARKER,
+                "### ⚠️ PR governance did not finish",
+                "",
+                `The governance check ended with \`${clean(result)}\` without listing specific problems. ` +
+                  `Open the [workflow run](${runUrl}) for details, or push or edit the description to re-run it.`,
+              ].join("\n");
+            }
+
+            if (existing) {
+              if (existing.body === body) {
+                core.info("Report unchanged.");
+                return;
+              }
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              core.info(`Updated report comment ${existing.id}.`);
+            } else {
+              const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
+              core.info(`Posted report comment ${data.id}.`);
+            }

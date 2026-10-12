@@ -71,6 +71,7 @@ Shared reusable workflows live in [`.github/workflows`](.github/workflows):
 | `issue-labeler.yml` | Adds `bug` or `enhancement` to untyped open issues |
 | `pr-conflicts.yml` | Labels and comments on PRs that conflict with the default branch |
 | `stale.yml` | Marks inactive issues and PRs stale, then closes them |
+| `governance-report.yml` | Tinkerologie-Bot comment listing PR governance problems to fix |
 
 Each repository calls them from small caller workflows, for example:
 
@@ -79,7 +80,7 @@ jobs:
   label:
     permissions:
       issues: write
-    uses: tinkerologie/.github/.github/workflows/issue-labeler.yml@<commit-sha> # v1.2.0
+    uses: tinkerologie/.github/.github/workflows/issue-labeler.yml@<commit-sha> # v1.3.0
 ```
 
 Callers pin a full commit SHA with the release tag as a comment, so a moved
