@@ -11,7 +11,8 @@ name: Issue Type Labeler
 #   2. Issue-form headings left in the body by the bug/enhancement templates.
 #   3. Keyword scoring on title and body (only when one side clearly wins).
 # Ambiguous issues are left for CodeRabbit's own labeling. Existing labels are
-# never removed, and a type label a maintainer removed is never re-added.
+# never removed, and a type label a maintainer (triage access or higher) removed
+# is never re-added.
 
 on:
   workflow_call:
@@ -110,16 +111,40 @@ jobs:
               }
             }
 
-            async function typeLabelWasRemoved(issueNumber) {
+            // Only a maintainer (triage access or higher) removing a type label opts the
+            // issue out; a removal by anyone else is ignored and the label is re-added.
+            const MAINTAINER_ROLES = new Set(["admin", "maintain", "write", "triage"]);
+            const roleCache = new Map();
+            async function isMaintainer(login) {
+              if (!login) return false;
+              if (!roleCache.has(login)) {
+                try {
+                  const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                    owner,
+                    repo,
+                    username: login,
+                  });
+                  roleCache.set(login, MAINTAINER_ROLES.has(data.role_name || data.permission));
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                  roleCache.set(login, false);
+                }
+              }
+              return roleCache.get(login);
+            }
+
+            async function typeLabelWasRemovedByMaintainer(issueNumber) {
               const events = await github.paginate(github.rest.issues.listEvents, {
                 owner,
                 repo,
                 issue_number: issueNumber,
                 per_page: 100,
               });
-              return events.some(
-                (e) => e.event === "unlabeled" && e.label && e.label.name.toLowerCase() in TYPE_LABELS,
-              );
+              for (const e of events) {
+                if (e.event !== "unlabeled" || !e.label || !(e.label.name.toLowerCase() in TYPE_LABELS)) continue;
+                if (await isMaintainer(e.actor && e.actor.login)) return true;
+              }
+              return false;
             }
 
             const results = [];
@@ -139,7 +164,7 @@ jobs:
                 results.push([`#${number}`, "-", reason]);
                 return;
               }
-              if (await typeLabelWasRemoved(number)) {
+              if (await typeLabelWasRemovedByMaintainer(number)) {
                 core.info(`#${number}: a maintainer removed a type label before; not re-adding`);
                 return;
               }

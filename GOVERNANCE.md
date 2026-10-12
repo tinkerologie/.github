@@ -77,7 +77,7 @@ jobs:
   label:
     permissions:
       issues: write
-    uses: tinkerologie/.github/.github/workflows/issue-labeler.yml@<commit-sha> # v1.1.0
+    uses: tinkerologie/.github/.github/workflows/issue-labeler.yml@<commit-sha> # v1.2.0
 ```
 
 Callers pin a full commit SHA with the release tag as a comment, so a moved
