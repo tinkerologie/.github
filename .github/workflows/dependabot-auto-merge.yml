@@ -96,10 +96,11 @@ jobs:
             pending=(); failed=(); passed=0
             # Read both APIs up front and stop on any failure: a lost response must never be
             # mistaken for "no failing checks".
-            # Only the newest run of each check counts: a run superseded by a newer one (for
-            # example a labeler run cancelled by its concurrency group) is not a failure.
+            # Only the newest run of each check counts (highest id, so a replacement that is
+            # still queued wins): a run superseded by a newer one, for example a labeler run
+            # cancelled by its concurrency group, is not a failure.
             if ! runs="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?per_page=100" \
-              | jq -r '[.[].check_runs[]] | group_by(.name) | map(max_by(.started_at // "")) | .[]
+              | jq -r '[.[].check_runs[]] | group_by(.name) | map(max_by(.id)) | .[]
                   | [.name, .status, (.conclusion // "-"), (.details_url // "-")] | @tsv')"; then
               echo "::error::Could not read the check runs for ${HEAD_SHA}."
               exit 1
