@@ -31,7 +31,7 @@ on:
     secrets:
       private-key:
         description: Tinkerologie-Bot GitHub App private key (org secret TINKER_BOT_PRIVATE_KEY).
-        required: true
+        required: false
 
 permissions: {}
 
@@ -41,8 +41,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     steps:
+      # Workflow `if:` conditions cannot read secrets, so check here: skip quietly
+      # where the org secret is not available (e.g. private repos on the Free plan).
+      - name: Check Tinkerologie-Bot credentials
+        id: credentials
+        env:
+          HAS_KEY: ${{ secrets.private-key != '' }}
+          HAS_CLIENT_ID: ${{ inputs.client-id != '' }}
+        run: |
+          if [ "$HAS_KEY" = "true" ] && [ "$HAS_CLIENT_ID" = "true" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Governance report skipped::Tinkerologie-Bot credentials are not available to this repository."
+          fi
+
       - name: Mint Tinkerologie-Bot token
         id: token
+        if: steps.credentials.outputs.ready == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ inputs.client-id }}
@@ -52,6 +68,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Post or update the governance comment
+        if: steps.credentials.outputs.ready == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           PR_NUMBER: ${{ inputs.pr-number }}
