@@ -94,12 +94,19 @@ jobs:
             }
             if (!Array.isArray(errors)) errors = [];
 
-            // Error messages quote text from the PR description: neutralise
+            // Error messages quote text from the PR description (checklist items,
+            // file names), which a fork author controls. Render it inert: escape
+            // Markdown and HTML syntax so no link, image or tag can appear in the
+            // bot's voice, break bare URLs so they are not auto-linked, neutralise
             // @mentions so the bot never pings anyone, and cap each item's length.
+            const ZWSP = String.fromCharCode(0x200b); // zero-width space
             const clean = (text) =>
               String(text)
-                .replace(/@/g, "@​")
                 .replace(/\r?\n/g, " ")
+                .replace(/[\\`*_{}\[\]()<>#+!|~&]/g, "\\$&")
+                .replace(/:\/\//g, `:${ZWSP}//`)
+                .replace(/\bwww\./gi, `www${ZWSP}.`)
+                .replace(/@/g, `@${ZWSP}`)
                 .slice(0, 1000);
 
             const comments = await github.paginate(github.rest.issues.listComments, {
