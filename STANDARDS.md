@@ -98,8 +98,7 @@ Project-specific extras keep a descriptive kebab-case name, for example
 - Shared governance workflows are called from
   [`tinkerologie/.github`](.github/workflows) pinned by SHA.
 - `labeler.yml` calls the shared `pr-labeler.yml`: path labels from the repository's
-  `.github/labeler.yml`, then exactly one type label, `enhancement` or `bug` (or
-  neither). The title's Conventional Commit type decides (`feat` → `enhancement`, `fix`
+  `.github/labeler.yml`, then at most one type label, `enhancement` or `bug`. The title's Conventional Commit type decides (`feat` → `enhancement`, `fix`
   → `bug`, any other type → neither), then the branch prefix, then a single ticked Type
   of Change box, then the linked issues. A contradicting type label is removed only if
   automation added it. `documentation` never comes from CHANGELOG.md alone, because every

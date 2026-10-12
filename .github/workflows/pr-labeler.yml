@@ -2,10 +2,10 @@ name: PR Labeler
 
 # Reusable workflow: labels pull requests.
 #   1. Path labels from the calling repository's .github/labeler.yml (actions/labeler).
-#   2. Exactly one type label, `enhancement` or `bug` (or neither), decided by the title's
+#   2. At most one type label, `enhancement` or `bug`, decided by the title's
 #      Conventional Commit type, then the branch prefix, then a single ticked Type of
 #      Change box, then the linked issues. A contradicting type label is removed only if
-#      automation added it.
+#      automation added it. If a linked issue cannot be read, the type labels are left alone.
 # Callers run this on `pull_request_target` (opened, synchronize, reopened,
 # ready_for_review, edited). No pull request code is checked out or run, so
 # `pull_request_target` is safe here.
@@ -48,7 +48,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            // Exactly one type label per pull request: `enhancement` or `bug`, or neither.
+            // At most one type label per pull request: `enhancement` or `bug`, or neither.
             // The first signal that names a type wins:
             //   1. the Conventional Commit type in the title (feat → enhancement, fix → bug;
             //      chore/docs/ci/refactor/test/build/perf/style/revert → neither),
@@ -56,7 +56,8 @@ jobs:
             //   3. the "Type of Change" boxes, when only one of bug fix / feature is ticked,
             //   4. the linked issues, when they agree on one type.
             // A contradicting type label is removed only if automation added it; a label set by a
-            // person is left alone.
+            // person is left alone. When a type cannot be determined reliably (a linked issue could not
+            // be read), nothing is changed.
             const TYPES = ["enhancement", "bug"];
             const TITLE_TYPES = {
               feat: "enhancement", feature: "enhancement", enhancement: "enhancement",
@@ -65,6 +66,8 @@ jobs:
             const AUTOMATION = new Set(["github-actions[bot]"]);
             // The body is contributor-controlled; bound the issue lookups it can cause.
             const MAX_ISSUE_LOOKUPS = 5;
+            // Label history scanned to tell who added a label; beyond this the label is kept.
+            const MAX_TIMELINE_PAGES = 5;
 
             const { owner, repo } = context.repo;
             const number = context.payload.pull_request.number;
@@ -104,8 +107,10 @@ jobs:
                     if (TYPES.includes(name)) found.add(name);
                   }
                 } catch (error) {
-                  if (error.status === 403 || error.status === 429) break; // rate limited: stop looking
-                  // A reference that cannot be read (deleted, or another repository) is ignored.
+                  // A reference that does not exist is ignored; any other failure (rate limit, outage)
+                  // means the answer is incomplete, so leave the labels as they are.
+                  if (error.status === 404 || error.status === 410) continue;
+                  return { type: undefined, source: `linked issue #${issue_number} could not be read (${error.status ?? error.message})` };
                 }
               }
               if (found.size === 1) return { type: [...found][0], source: "linked issue" };
@@ -113,15 +118,26 @@ jobs:
             }
 
             async function addedByAutomation(label) {
-              const events = await github.paginate(github.rest.issues.listEventsForTimeline, {
+              let last = null;
+              let pages = 0;
+              for await (const { data } of github.paginate.iterator(github.rest.issues.listEvents, {
                 owner, repo, issue_number: number, per_page: 100,
-              });
-              const last = events.filter((e) => e.event === "labeled" && e.label?.name === label).pop();
+              })) {
+                for (const e of data) if (e.event === "labeled" && e.label?.name === label) last = e;
+                if (++pages >= MAX_TIMELINE_PAGES) {
+                  core.info(`Label history longer than ${MAX_TIMELINE_PAGES} pages; keeping ${label}`);
+                  return false;
+                }
+              }
               return Boolean(last && AUTOMATION.has(last.actor?.login));
             }
 
             const { type, source } = await decide();
             const current = new Set((pr.labels || []).map((l) => l.name));
+            if (type === undefined) {
+              core.warning(`Type labels left unchanged: ${source}`);
+              return;
+            }
             core.info(`Type: ${type ?? "none"} (${source})`);
 
             if (type && !current.has(type)) {
