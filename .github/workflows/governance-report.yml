@@ -69,7 +69,10 @@ jobs:
           client-id: ${{ inputs.client-id }}
           private-key: ${{ secrets.private-key }}
           repositories: ${{ github.event.repository.name }}
-          permission-issues: write # PR conversation comments use the issues API; nothing else is needed
+          permission-issues: write # comments use the issues API
+          # Also required: GitHub Apps get 403 "Resource not accessible by integration"
+          # when commenting on a pull request with issues: write alone.
+          permission-pull-requests: write
 
       - name: Post or update the governance comment
         if: steps.credentials.outputs.ready == 'true'
