@@ -39,6 +39,11 @@ jobs:
   report:
     name: Tinkerologie-Bot report
     runs-on: ubuntu-latest
+    # Write reports for a pull request one at a time and never cancel a write in
+    # progress, so runs cannot overwrite each other out of order.
+    concurrency:
+      group: tinkerologie-bot-report-${{ github.repository }}-${{ inputs.pr-number }}
+      cancel-in-progress: false
     permissions: {}
     steps:
       # Workflow `if:` conditions cannot read secrets, so check here: skip quietly
@@ -64,8 +69,7 @@ jobs:
           client-id: ${{ inputs.client-id }}
           private-key: ${{ secrets.private-key }}
           repositories: ${{ github.event.repository.name }}
-          permission-issues: write # PR conversation comments use the issues API
-          permission-pull-requests: write
+          permission-issues: write # PR conversation comments use the issues API; nothing else is needed
 
       - name: Post or update the governance comment
         if: steps.credentials.outputs.ready == 'true'
@@ -87,13 +91,18 @@ jobs:
             const result = process.env.RESULT;
             const runUrl = process.env.RUN_URL;
             const runId = Number(process.env.RUN_ID);
+
             // Run IDs only increase, so a stamp in the comment lets an older run that
             // finishes late detect that a newer report is already there.
             const RUN_STAMP = (id) => `<!-- tinkerologie-bot:run:${id} -->`;
             const stampOf = (text) => Number(((text || "").match(/tinkerologie-bot:run:(\d+)/) || [])[1] || 0);
+            const withoutStamp = (text) => (text || "").replace(/\n?<!-- tinkerologie-bot:run:\d+ -->/g, "");
             // GitHub rejects comments over 65,536 characters.
-            const MAX_ITEMS = 50;
+            const MAX_ITEMS = 25;
+            const MAX_SECTIONS = 15;
             const MAX_BODY = 60000;
+            const BOX = String.fromCharCode(0x2610); // ballot box
+            const ZWSP = String.fromCharCode(0x200b); // zero-width space
 
             let errors = [];
             try {
@@ -103,20 +112,147 @@ jobs:
             }
             if (!Array.isArray(errors)) errors = [];
 
-            // Error messages quote text from the PR description (checklist items,
-            // file names), which a fork author controls. Render it inert: escape
-            // Markdown and HTML syntax so no link, image or tag can appear in the
-            // bot's voice, break bare URLs so they are not auto-linked, neutralise
-            // @mentions so the bot never pings anyone, and cap each item's length.
-            const ZWSP = String.fromCharCode(0x200b); // zero-width space
+            // Text quoted from the pull request (checklist items, section and file names)
+            // is controlled by its author. Render it inert: escape Markdown and HTML so no
+            // link, image, emphasis or tag can appear in the bot's voice, break bare URLs so
+            // they are not auto-linked, and neutralise @mentions. Backticks are kept: code
+            // spans cannot contain links, so `make test` still reads as code.
             const clean = (text) =>
               String(text)
                 .replace(/\r?\n/g, " ")
-                .replace(/[\\`*_{}\[\]()<>#+!|~&]/g, "\\$&")
+                .replace(/[\\*_{}\[\]()<>#+!|~&]/g, "\\$&")
                 .replace(/:\/\//g, `:${ZWSP}//`)
                 .replace(/\bwww\./gi, `www${ZWSP}.`)
                 .replace(/@/g, `@${ZWSP}`)
-                .slice(0, 1000);
+                .slice(0, 500);
+
+            // Inside a code span nothing renders (no links, mentions or emphasis), so text
+            // shown as code only needs backticks and line breaks removed.
+            const code = (text) => "`" + String(text).replace(/[`\r\n]/g, "").trim().slice(0, 300) + "`";
+
+            // Show 'quoted' identifiers as code and escape everything else.
+            const withCode = (text) =>
+              String(text)
+                .split(/'([^'\r\n]{1,80})'/)
+                .map((part, i) => (i % 2 ? code(part) : clean(part)))
+                .join("");
+
+            const LINK_HOWTO =
+              "Under **Related Issues**, write `Closes #123` if this pull request fully fixes the issue, or " +
+              "`Part of #123` for partial work. No issue yet? Open one with the **Bug report** or " +
+              "**Enhancement request** template first. `None` is only for maintainers.";
+
+            // Turn the governance check's messages into short, grouped, actionable sections.
+            function present(messages) {
+              const sections = [];
+              const missing = [];
+              const tickOne = [];
+              const files = [];
+              const seen = new Set();
+              const add = (key, section) => {
+                if (seen.has(key)) return;
+                seen.add(key);
+                sections.push(section);
+              };
+
+              for (const raw of messages) {
+                const e = String(raw).trim();
+                let m;
+                if ((m = e.match(/^Missing or empty required section: "(.+?)"\.?$/))) {
+                  missing.push(m[1]);
+                } else if ((m = e.match(/^At least one item must be checked in "(.+?)"\.?$/))) {
+                  tickOne.push(m[1]);
+                } else if ((m = e.match(/^All (?:required )?items in "(.+?)" must be checked\b[\s\S]*?Unchecked: ([\s\S]+?)\.?$/))) {
+                  add(`tick:${m[1]}`, {
+                    title: `Tick every required box in **${clean(m[1])}**`,
+                    text: "These boxes are still unticked. Tick each one once it is true for this pull request:",
+                    items: m[2].split(/;\s+/).map((item) => `${BOX} ${clean(item)}`),
+                  });
+                } else if ((m = e.match(/^"(.+?)" must contain the required confirmation checkboxes\.?$/))) {
+                  add(`restore:${m[1]}`, {
+                    title: `Restore the **${clean(m[1])}** checkboxes`,
+                    text: "Copy this section's checkboxes from the pull request template, then tick each one that is true.",
+                  });
+                } else if ((m = e.match(/^In (.+?): ([\s\S]+)$/))) {
+                  files.push(`${code(m[1])}: ${withCode(m[2])}`);
+                } else if (/^CHANGELOG\.md must be updated/.test(e)) {
+                  add("changelog", {
+                    title: "Add a `CHANGELOG.md` entry",
+                    text: "Describe this change under `## [Unreleased]` in `CHANGELOG.md`, then push the commit.",
+                  });
+                } else if (/^Contributor PRs must link an issue/.test(e) || /^Add at least one linked issue/.test(e) || /must reference an issue/.test(e)) {
+                  add("link", { title: "Link the issue this pull request is for", text: LINK_HOWTO });
+                } else if (/^Could not find the linked issue/.test(e)) {
+                  add("link-missing", {
+                    title: "Link an issue that exists",
+                    text: "The issue under **Related Issues** could not be found. Check the number or URL. " + LINK_HOWTO,
+                  });
+                } else if (/^Replace the "#\(issue number\)" placeholder/.test(e)) {
+                  add("placeholder", {
+                    title: "Replace the issue number placeholder",
+                    text: "Change `#(issue number)` under **Related Issues** to the real issue, for example `Closes #123`.",
+                  });
+                } else if (/^Could not confirm that the author may use "None"/.test(e)) {
+                  add("permission", {
+                    title: "Re-run the check, or link an issue",
+                    text:
+                      "GitHub could not confirm whether you may write `None` under **Related Issues** (a temporary API problem). " +
+                      "Edit the description to re-run the check, or link an issue instead.",
+                  });
+                } else if (/^"Changes Made" must include/.test(e)) {
+                  add("changes", {
+                    title: "Describe your changes",
+                    text: "List at least one change as a bullet under **Changes Made**.",
+                  });
+                } else {
+                  const [first, ...rest] = e.split(/(?<=\.)\s+/);
+                  add(`other:${e}`, { title: clean(first.replace(/\.$/, "")), text: rest.length ? clean(rest.join(" ")) : "" });
+                }
+              }
+
+              const grouped = [];
+              if (missing.length) {
+                grouped.push({
+                  title: "Fill in the missing sections",
+                  text: "Copy these sections from the pull request template and complete them:",
+                  items: missing.map((name) => `**${clean(name)}**`),
+                });
+              }
+              if (tickOne.length) {
+                grouped.push({
+                  title: "Tick at least one box in each of these sections",
+                  text: "Choose the options that describe this pull request:",
+                  items: tickOne.map((name) => `**${clean(name)}**`),
+                });
+              }
+              if (files.length) {
+                grouped.push({
+                  title: "Fix the code patterns flagged in changed files",
+                  text: "These project rules are checked automatically:",
+                  items: files,
+                });
+              }
+              return [...grouped, ...sections];
+            }
+
+            function renderSection(section, index) {
+              const lines = [`### ${index + 1}. ${section.title}`, ""];
+              if (section.text) lines.push(section.text, "");
+              if (section.items && section.items.length) {
+                for (const item of section.items.slice(0, MAX_ITEMS)) lines.push(`- ${item}`);
+                if (section.items.length > MAX_ITEMS) {
+                  lines.push(`- … and ${section.items.length - MAX_ITEMS} more (see the [check details](${runUrl}))`);
+                }
+                lines.push("");
+              }
+              return lines.join("\n");
+            }
+
+            const FOOTER = (extra) =>
+              [
+                "---",
+                `<sub>${extra}📖 [Contribution rules](${GOVERNANCE_URL}) · 🔎 [Check details](${runUrl})</sub>`,
+              ].join("\n");
 
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner,
@@ -136,55 +272,62 @@ jobs:
               }
               body = [
                 MARKER,
-                "### ✅ PR governance passed",
+                "## ✅ PR governance passed",
                 "",
-                "All governance checks pass. Thanks for fixing them!",
+                "Everything checks out. Thanks for fixing the earlier problems: this pull request is ready for review.",
+                "",
+                FOOTER(""),
               ].join("\n");
             } else if (errors.length > 0) {
-              const noun = errors.length === 1 ? "problem" : "problems";
+              const sections = present(errors);
+              const count = sections.length;
               body = [
                 MARKER,
-                `### ❌ PR governance: ${errors.length} ${noun} to fix`,
+                `## ❌ PR governance: ${count} ${count === 1 ? "thing" : "things"} to fix`,
                 "",
-                "This pull request cannot be reviewed or merged until these are fixed:",
+                "This pull request can't be reviewed or merged until these are fixed. " +
+                  "The check re-runs automatically after each change, and this comment updates.",
                 "",
-                ...errors.slice(0, MAX_ITEMS).map((error, i) => `${i + 1}. ${clean(error)}`),
-                ...(errors.length > MAX_ITEMS ? [`… and ${errors.length - MAX_ITEMS} more; see the workflow run.`] : []),
-                "",
-                "**How to fix:** edit the pull request description, and push any missing changes such as the " +
-                  "`CHANGELOG.md` entry. The check re-runs automatically and this comment updates.",
-                "",
-                `Rules: [GOVERNANCE.md](${GOVERNANCE_URL}) · Details: [workflow run](${runUrl})`,
+                ...sections.slice(0, MAX_SECTIONS).map(renderSection),
+                ...(count > MAX_SECTIONS
+                  ? [`… and ${count - MAX_SECTIONS} more. See the [check details](${runUrl}) for the full list.`, ""]
+                  : []),
+                FOOTER("💡 Most fixes only need an edit to the pull request description. · "),
               ].join("\n");
             } else {
               body = [
                 MARKER,
-                "### ⚠️ PR governance did not finish",
+                "## ⚠️ PR governance couldn't finish",
                 "",
-                `The governance check ended with \`${clean(result)}\` without listing specific problems. ` +
-                  `Open the [workflow run](${runUrl}) for details, or push or edit the description to re-run it.`,
+                `The check stopped (\`${clean(result)}\`) before it could list any problems. This is usually a temporary GitHub problem.`,
+                "",
+                "**To retry:** edit the pull request description or push a commit.",
+                "",
+                FOOTER(""),
               ].join("\n");
             }
 
             body = `${body}\n${RUN_STAMP(runId)}`;
             if (body.length > MAX_BODY) {
-              body = `${body.slice(0, MAX_BODY)}\n\n… report truncated; see the [workflow run](${runUrl}).\n${RUN_STAMP(runId)}`;
+              body = `${body.slice(0, MAX_BODY)}\n\n… report truncated; see the [check details](${runUrl}).\n${RUN_STAMP(runId)}`;
             }
 
-            if (existing) {
-              // Re-read just before writing: skip if a newer run already reported.
-              const { data: latest } = await github.rest.issues.getComment({ owner, repo, comment_id: existing.id });
-              if (stampOf(latest.body) > runId) {
-                core.info(`A newer run (${stampOf(latest.body)}) already updated the report; skipping.`);
-                return;
-              }
-              const withoutStamp = (text) => (text || "").replace(/\n?<!-- tinkerologie-bot:run:\d+ -->/g, "");
-              if (withoutStamp(latest.body) === withoutStamp(body)) {
+            // Re-read just before writing so a run that finishes late never replaces a newer report.
+            const fresh = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const current = fresh.find(
+              (c) => c.user && c.user.login === process.env.BOT_LOGIN && (c.body || "").includes(MARKER),
+            );
+            if (current && stampOf(current.body) > runId) {
+              core.info(`A newer run (${stampOf(current.body)}) already updated the report; skipping.`);
+              return;
+            }
+            if (current) {
+              if (withoutStamp(current.body) === withoutStamp(body)) {
                 core.info("Report unchanged.");
                 return;
               }
-              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-              core.info(`Updated report comment ${existing.id}.`);
+              await github.rest.issues.updateComment({ owner, repo, comment_id: current.id, body });
+              core.info(`Updated report comment ${current.id}.`);
             } else {
               const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
               core.info(`Posted report comment ${data.id}.`);
