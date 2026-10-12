@@ -71,11 +71,17 @@ repository only adds its own copy when it needs project-specific content.
 | `pr-conflicts.yml` | PR Conflicts | Conflicts | All |
 | `issue-labeler.yml` | Issue Labeler | Label | All |
 | `stale.yml` | Stale | Stale | All |
-| `labeler.yml` | PR Labeler | Label | Repositories that label PRs by changed paths |
+| `labeler.yml` | PR Labeler | Label | Repositories that label PRs by changed paths (rules in `.github/labeler.yml`) |
 
 Project-specific extras keep a descriptive kebab-case name, for example
 `codeql.yml`, `docker.yml`, `docs.yml`, `playwright.yml`,
 `check-api-boundary.yml`. `copilot-setup-steps.yml` keeps the name GitHub requires.
+
+### Known gaps
+
+These repositories have no `ci.yml` yet and need a lint and test pipeline written:
+`ha-actronair-neo`, `ha-globird`, `ha-translink`, `philips-airctrl`. Until then their
+checks come from `validate.yml` or the release workflow only.
 
 ### Conventions
 
@@ -105,7 +111,9 @@ The organization label set below is synced to every repository by the
 ## 6. Dependabot
 
 - One update block per ecosystem in use, plus `github-actions`.
-- Weekly schedule (Monday), grouped minor and patch updates.
+- Weekly schedule (Monday), grouped minor and patch updates. Exception: Home Assistant
+  integrations check their Python ecosystem daily so new Home Assistant releases are
+  picked up quickly.
 - Labels: `dependencies`. Commit messages use the `chore(deps)` prefix.
 
 ## 7. Issues and pull requests
