@@ -272,7 +272,7 @@ jobs:
               }
               body = [
                 MARKER,
-                "## ✅ PR governance passed",
+                "## ✅ Pull request checklist complete",
                 "",
                 "Everything checks out. Thanks for fixing the earlier problems: this pull request is ready for review.",
                 "",
@@ -283,7 +283,7 @@ jobs:
               const count = sections.length;
               body = [
                 MARKER,
-                `## ❌ PR governance: ${count} ${count === 1 ? "thing" : "things"} to fix`,
+                `## ❌ Pull request checklist: ${count} ${count === 1 ? "thing" : "things"} to fix`,
                 "",
                 "This pull request can't be reviewed or merged until these are fixed. " +
                   "The check re-runs automatically after each change, and this comment updates.",
@@ -297,7 +297,7 @@ jobs:
             } else {
               body = [
                 MARKER,
-                "## ⚠️ PR governance couldn't finish",
+                "## ⚠️ Pull request checklist couldn't finish",
                 "",
                 `The check stopped (\`${clean(result)}\`) before it could list any problems. This is usually a temporary GitHub problem.`,
                 "",
