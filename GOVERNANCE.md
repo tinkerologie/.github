@@ -73,7 +73,7 @@ Shared reusable workflows live in [`.github/workflows`](.github/workflows):
 | `issue-labeler.yml` | Adds `bug` or `enhancement` to untyped open issues |
 | `pr-conflicts.yml` | Labels and comments on PRs that conflict with the default branch |
 | `stale.yml` | Marks inactive issues and PRs stale, then closes them |
-| `governance-report.yml` | Tinkerologie-Bot comment listing PR governance problems to fix |
+| `governance-report.yml` | Tinkerologie-Bot comment listing PR governance problems to fix. Reports for a pull request run one at a time and the newest run's report always writes last, so the comment always ends up current; a briefly stale state is possible while a newer run finishes. |
 | `label-sync.yml` | Syncs the organization label set ([labels.json](labels.json)) to every repository |
 
 Each repository calls them from small caller workflows, for example:
