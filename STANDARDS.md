@@ -71,17 +71,12 @@ repository only adds its own copy when it needs project-specific content.
 | `pr-conflicts.yml` | PR Conflicts | Conflicts | All |
 | `issue-labeler.yml` | Issue Labeler | Label | All |
 | `stale.yml` | Stale | Stale | All |
-| `labeler.yml` | PR Labeler | Label | Repositories that label PRs by changed paths (rules in `.github/labeler.yml`) |
+| `labeler.yml` | PR Labeler | Label | All (path rules in `.github/labeler.yml`) |
+| `dependabot-auto-merge.yml` | Dependabot Auto-merge | Merge when CI passes | All |
 
 Project-specific extras keep a descriptive kebab-case name, for example
 `codeql.yml`, `docker.yml`, `docs.yml`, `playwright.yml`,
 `check-api-boundary.yml`. `copilot-setup-steps.yml` keeps the name GitHub requires.
-
-### Known gaps
-
-These repositories have no `ci.yml` yet and need a lint and test pipeline written:
-`ha-actronair-neo`, `ha-globird`, `ha-translink`, `philips-airctrl`. Until then their
-checks come from `validate.yml` or the release workflow only.
 
 ### Conventions
 
@@ -102,6 +97,13 @@ checks come from `validate.yml` or the release workflow only.
   caches. `zizmor` reports no errors or warnings.
 - Shared governance workflows are called from
   [`tinkerologie/.github`](.github/workflows) pinned by SHA.
+- `labeler.yml` calls the shared `pr-labeler.yml`: path labels from the repository's
+  `.github/labeler.yml`, then exactly one type label, `enhancement` or `bug` (or
+  neither). The title's Conventional Commit type decides (`feat` → `enhancement`, `fix`
+  → `bug`, any other type → neither), then the branch prefix, then a single ticked Type
+  of Change box, then the linked issues. A contradicting type label is removed only if
+  automation added it. `documentation` never comes from CHANGELOG.md alone, because every
+  pull request updates it.
 
 ## 5. Labels
 
@@ -125,6 +127,18 @@ The organization label set below is synced to every repository by the
   integrations check their Python ecosystem daily so new Home Assistant releases are
   picked up quickly.
 - Labels: `dependencies`. Commit messages use the `chore(deps)` prefix.
+- Python projects with a `uv.lock` use the `uv` ecosystem (not `pip`), so version and
+  security updates reach the lock file that security alerts are raised from.
+- Hold back majors that cannot pass CI on their own, with the reason in a comment:
+  `typescript` where typescript-eslint is used (it supports TypeScript below 6.1),
+  `homebridge` (v2 is the supported runtime), and `@types/node`, which tracks the oldest
+  Node version in `engines`.
+- `dependabot-auto-merge.yml` merges a Dependabot pull request whose largest update is a
+  patch or minor version once every other check and commit status on its head commit has
+  passed (Codecov excepted). GitHub's built-in auto-merge would not wait: it waits only
+  for required checks, and PR Governance is skipped for Dependabot. Majors and grouped
+  pull requests containing a major are left for a person, and open review threads still
+  block the merge.
 
 ## 7. Issues and pull requests
 

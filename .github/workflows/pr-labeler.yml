@@ -1,0 +1,142 @@
+name: PR Labeler
+
+# Reusable workflow: labels pull requests.
+#   1. Path labels from the calling repository's .github/labeler.yml (actions/labeler).
+#   2. Exactly one type label, `enhancement` or `bug` (or neither), decided by the title's
+#      Conventional Commit type, then the branch prefix, then a single ticked Type of
+#      Change box, then the linked issues. A contradicting type label is removed only if
+#      automation added it.
+# Callers run this on `pull_request_target` (opened, synchronize, reopened,
+# ready_for_review, edited). No pull request code is checked out or run, so
+# `pull_request_target` is safe here.
+
+on:
+  workflow_call:
+    inputs:
+      configuration-path:
+        description: Path labels configuration in the calling repository.
+        type: string
+        default: .github/labeler.yml
+
+# Callers must grant the same scopes; a called workflow cannot elevate them.
+permissions:
+  contents: read # read the labeler configuration
+  issues: write # add and remove labels
+  pull-requests: write # add and remove labels
+
+jobs:
+  label:
+    name: Label
+    runs-on: ubuntu-latest
+    # Overlapping runs (an edit right after a push) would otherwise race on the labels.
+    concurrency:
+      group: pr-labeler-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read # read the labeler configuration
+      issues: write # add and remove labels
+      pull-requests: write # add and remove labels
+    steps:
+      - name: Apply path labels
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          repo-token: ${{ github.token }}
+          configuration-path: ${{ inputs.configuration-path }}
+          sync-labels: false
+
+      - name: Apply one type label (bug or enhancement)
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // Exactly one type label per pull request: `enhancement` or `bug`, or neither.
+            // The first signal that names a type wins:
+            //   1. the Conventional Commit type in the title (feat → enhancement, fix → bug;
+            //      chore/docs/ci/refactor/test/build/perf/style/revert → neither),
+            //   2. the branch prefix (feat/ → enhancement, fix/ → bug),
+            //   3. the "Type of Change" boxes, when only one of bug fix / feature is ticked,
+            //   4. the linked issues, when they agree on one type.
+            // A contradicting type label is removed only if automation added it; a label set by a
+            // person is left alone.
+            const TYPES = ["enhancement", "bug"];
+            const TITLE_TYPES = {
+              feat: "enhancement", feature: "enhancement", enhancement: "enhancement",
+              fix: "bug", bugfix: "bug", hotfix: "bug",
+            };
+            const AUTOMATION = new Set(["github-actions[bot]"]);
+            // The body is contributor-controlled; bound the issue lookups it can cause.
+            const MAX_ISSUE_LOOKUPS = 5;
+
+            const { owner, repo } = context.repo;
+            const number = context.payload.pull_request.number;
+            // Read the pull request as it is now, not as the event saw it: an edit can land while an
+            // older run is still deciding.
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+            const title = (pr.title || "").trim();
+            const body = pr.body || "";
+            const branch = pr.head?.ref || "";
+
+            async function decide() {
+              const conventional = /^([a-z]+)(?:\([^)]*\))?!?:/i.exec(title);
+              if (conventional) {
+                const type = TITLE_TYPES[conventional[1].toLowerCase()] ?? null;
+                return { type, source: `title type "${conventional[1]}"` };
+              }
+
+              const prefix = /^(feat|feature|enhancement|fix|bugfix|hotfix)[/-]/i.exec(branch);
+              if (prefix) return { type: TITLE_TYPES[prefix[1].toLowerCase()], source: `branch "${branch}"` };
+
+              const ticked = new Set();
+              if (/^\s*-\s*\[[xX]\]\s*(?:new feature|enhancement|new sensor|new accessory|new endpoint)/im.test(body)) ticked.add("enhancement");
+              if (/^\s*-\s*\[[xX]\]\s*bug fix/im.test(body)) ticked.add("bug");
+              if (ticked.size === 1) return { type: [...ticked][0], source: "Type of Change box" };
+              if (ticked.size > 1) return { type: null, source: "both bug fix and feature are ticked; not guessing" };
+
+              const refs = [...new Set((body.match(/(?<![\w/])#(\d+)\b/g) || []).map((r) => Number(r.slice(1))))]
+                .filter((n) => n !== number)
+                .slice(0, MAX_ISSUE_LOOKUPS);
+              const found = new Set();
+              for (const issue_number of refs) {
+                try {
+                  const { data } = await github.rest.issues.get({ owner, repo, issue_number });
+                  if (data.pull_request) continue;
+                  for (const l of data.labels || []) {
+                    const name = typeof l === "string" ? l : l.name;
+                    if (TYPES.includes(name)) found.add(name);
+                  }
+                } catch (error) {
+                  if (error.status === 403 || error.status === 429) break; // rate limited: stop looking
+                  // A reference that cannot be read (deleted, or another repository) is ignored.
+                }
+              }
+              if (found.size === 1) return { type: [...found][0], source: "linked issue" };
+              return { type: null, source: found.size > 1 ? "linked issues disagree" : "no type signal" };
+            }
+
+            async function addedByAutomation(label) {
+              const events = await github.paginate(github.rest.issues.listEventsForTimeline, {
+                owner, repo, issue_number: number, per_page: 100,
+              });
+              const last = events.filter((e) => e.event === "labeled" && e.label?.name === label).pop();
+              return Boolean(last && AUTOMATION.has(last.actor?.login));
+            }
+
+            const { type, source } = await decide();
+            const current = new Set((pr.labels || []).map((l) => l.name));
+            core.info(`Type: ${type ?? "none"} (${source})`);
+
+            if (type && !current.has(type)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: [type] });
+              core.info(`Added ${type}`);
+            }
+            for (const other of TYPES.filter((t) => t !== type && current.has(t))) {
+              if (await addedByAutomation(other)) {
+                try {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number: number, name: other });
+                  core.info(`Removed ${other} (added by automation, contradicts ${type ?? "no type"})`);
+                } catch (error) {
+                  if (error.status !== 404) throw error; // 404: another run already removed it
+                }
+              } else {
+                core.info(`Kept ${other}: a person added it`);
+              }
+            }
