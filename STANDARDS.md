@@ -88,8 +88,18 @@ checks come from `validate.yml` or the release workflow only.
 - Third-party actions are pinned to a full commit SHA with the version as a
   comment: `uses: actions/checkout@<sha> # v7.0.1`. Dependabot keeps them current.
 - Workflows declare `permissions` explicitly and request the minimum.
-- CI runs on `push` to `main`, `pull_request`, and `workflow_dispatch`, with a
-  concurrency group that cancels superseded runs.
+- CI runs on `push` to `main`, `pull_request` (opened, synchronize, reopened,
+  ready_for_review), and `workflow_dispatch`, with a concurrency group that
+  cancels superseded pull request runs.
+- Every `schedule` entry sets `timezone: Australia/Brisbane` (no daylight
+  saving, so runs never shift).
+- Checkouts use `persist-credentials: false`. A step that must push passes the
+  token explicitly to that one `git push`.
+- Release workflows: workflow-level `permissions: contents: read`; each job
+  requests only what it uses, with a comment saying why (`contents: write` to
+  publish the release, `id-token: write` for trusted publishing); no `${{ }}`
+  expressions inside `run:` scripts (pass them through `env:`); no dependency
+  caches. `zizmor` reports no errors or warnings.
 - Shared governance workflows are called from
   [`tinkerologie/.github`](.github/workflows) pinned by SHA.
 
