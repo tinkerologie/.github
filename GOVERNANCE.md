@@ -80,7 +80,7 @@ jobs:
   label:
     permissions:
       issues: write
-    uses: tinkerologie/.github/.github/workflows/issue-labeler.yml@<commit-sha> # v1.3.2
+    uses: tinkerologie/.github/.github/workflows/issue-labeler.yml@<commit-sha> # v1.3.3
 ```
 
 Callers pin a full commit SHA with the release tag as a comment, so a moved

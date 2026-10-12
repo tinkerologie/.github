@@ -74,6 +74,7 @@ jobs:
           PR_NUMBER: ${{ inputs.pr-number }}
           RESULT: ${{ inputs.result }}
           ERRORS: ${{ inputs.errors }}
+          RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BOT_LOGIN: ${{ steps.token.outputs.app-slug }}[bot]
         with:
@@ -85,6 +86,14 @@ jobs:
             const issue_number = Number(process.env.PR_NUMBER);
             const result = process.env.RESULT;
             const runUrl = process.env.RUN_URL;
+            const runId = Number(process.env.RUN_ID);
+            // Run IDs only increase, so a stamp in the comment lets an older run that
+            // finishes late detect that a newer report is already there.
+            const RUN_STAMP = (id) => `<!-- tinkerologie-bot:run:${id} -->`;
+            const stampOf = (text) => Number(((text || "").match(/tinkerologie-bot:run:(\d+)/) || [])[1] || 0);
+            // GitHub rejects comments over 65,536 characters.
+            const MAX_ITEMS = 50;
+            const MAX_BODY = 60000;
 
             let errors = [];
             try {
@@ -139,7 +148,8 @@ jobs:
                 "",
                 "This pull request cannot be reviewed or merged until these are fixed:",
                 "",
-                ...errors.map((error, i) => `${i + 1}. ${clean(error)}`),
+                ...errors.slice(0, MAX_ITEMS).map((error, i) => `${i + 1}. ${clean(error)}`),
+                ...(errors.length > MAX_ITEMS ? [`… and ${errors.length - MAX_ITEMS} more; see the workflow run.`] : []),
                 "",
                 "**How to fix:** edit the pull request description, and push any missing changes such as the " +
                   "`CHANGELOG.md` entry. The check re-runs automatically and this comment updates.",
@@ -156,8 +166,20 @@ jobs:
               ].join("\n");
             }
 
+            body = `${body}\n${RUN_STAMP(runId)}`;
+            if (body.length > MAX_BODY) {
+              body = `${body.slice(0, MAX_BODY)}\n\n… report truncated; see the [workflow run](${runUrl}).\n${RUN_STAMP(runId)}`;
+            }
+
             if (existing) {
-              if (existing.body === body) {
+              // Re-read just before writing: skip if a newer run already reported.
+              const { data: latest } = await github.rest.issues.getComment({ owner, repo, comment_id: existing.id });
+              if (stampOf(latest.body) > runId) {
+                core.info(`A newer run (${stampOf(latest.body)}) already updated the report; skipping.`);
+                return;
+              }
+              const withoutStamp = (text) => (text || "").replace(/\n?<!-- tinkerologie-bot:run:\d+ -->/g, "");
+              if (withoutStamp(latest.body) === withoutStamp(body)) {
                 core.info("Report unchanged.");
                 return;
               }
