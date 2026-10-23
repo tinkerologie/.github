@@ -28,7 +28,7 @@ One ruleset per repository, named **Default branch protection**:
 - Changes through pull requests only; squash merge only.
 - All review conversations must be resolved before merging (CodeRabbit included).
 - Required status check: **PR Governance**.
-- Copilot code review requested on pull requests.
+- No Copilot code review: CodeRabbit is the only review bot.
 - Repository admins may bypass.
 
 ## 3. Files every repository has
@@ -132,13 +132,22 @@ The organization label set below is synced to every repository by the
   `typescript` where typescript-eslint is used (it supports TypeScript below 6.1),
   `homebridge` (v2 is the supported runtime), and `@types/node`, which tracks the oldest
   Node version in `engines`.
+- Home Assistant integrations ignore every package that `pytest-homeassistant-custom-component`
+  pins exactly (`pytest`, `pytest-asyncio`, `pytest-cov`, `syrupy`, `freezegun`, `respx`,
+  `pydantic` and the rest of its `==` pins) when the project lists it directly. Bumping one on
+  its own makes the lock unsatisfiable and fails the whole update run; they move when
+  `pytest-homeassistant-custom-component` does. `homeassistant` itself is grouped with
+  `pytest-homeassistant-custom-component` for the same reason.
 - `dependabot-auto-merge.yml` merges a Dependabot pull request whose largest update is a
-  patch or minor version once the other checks and commit statuses on its head commit have
+  patch or minor version, or that moves an action from `home-assistant/actions` or
+  `hacs/action` from one commit to another (those have no releases, so Dependabot cannot
+  classify the bump), once the other checks and commit statuses on its head commit have
   finished without a failure (skipped and neutral results are fine). A Codecov check that is still pending is not waited for (patch coverage never
   reports on lock-file-only changes); a Codecov failure blocks the merge. GitHub's
   built-in auto-merge would not wait: it waits only for required checks, and PR
   Governance is skipped for Dependabot. Majors and grouped pull requests containing a
-  major are left for a person, and open review threads still block the merge. After
+  major are left for a person, and open review threads still block the merge. A merge that
+  races another push to the default branch is retried. After
   re-running a failed check, re-run the Auto-merge job too (or comment
   `@dependabot rebase`); nothing restarts it automatically.
 

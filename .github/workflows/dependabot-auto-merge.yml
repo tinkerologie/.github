@@ -3,7 +3,10 @@ name: Dependabot Auto-merge
 # Reusable workflow: merges a Dependabot pull request that only contains patch or minor
 # updates once the other checks on its head commit have finished without a failure
 # (skipped and neutral results are fine). Major updates, and updates Dependabot cannot
-# classify, are left for a person.
+# classify, are left for a person. The one exception is an action that has no releases
+# and is pinned to a commit on its default branch (home-assistant/actions, hacs/action):
+# Dependabot cannot classify a commit-to-commit bump, so those owners are trusted to
+# merge like a patch.
 #
 # GitHub's own auto-merge (`gh pr merge --auto`) waits only for *required* checks. PR
 # Governance, the only required check, is skipped for Dependabot pull requests, so it
@@ -15,8 +18,9 @@ name: Dependabot Auto-merge
 # If a check fails and is later re-run successfully, nothing restarts this workflow:
 # re-run the Auto-merge job too, or comment `@dependabot rebase` on the pull request.
 #
-# A merge still has to satisfy the branch ruleset: open review threads (CodeRabbit or
-# Copilot) block it, and the job then fails so the pull request is left for a person.
+# A merge still has to satisfy the branch ruleset: open review threads (CodeRabbit) block
+# it, and the job then fails so the pull request is left for a person. A merge that races
+# another push to the default branch ("Base branch was modified") is retried.
 #
 # Callers run this on `pull_request` (opened, synchronize, reopened). The merge is made
 # with GITHUB_TOKEN, so it does not trigger workflows on the resulting push to the
@@ -64,8 +68,34 @@ jobs:
         env:
           UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
           DEPENDENCIES: ${{ steps.meta.outputs.dependency-names }}
+          ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          NEW_VERSION: ${{ steps.meta.outputs.new-version }}
         run: |
+          # A commit-to-commit bump of an action from a trusted owner: no update type, the
+          # new version is a full commit SHA, and every dependency is from that owner.
+          trusted_commit_bump() {
+            [ -z "$UPDATE_TYPE" ] && [ "$ECOSYSTEM" = github_actions ] || return 1
+            [[ "$NEW_VERSION" =~ ^[0-9a-f]{40}$ ]] || return 1
+            local dep
+            IFS=',' read -ra deps <<< "$DEPENDENCIES"
+            [ "${#deps[@]}" -gt 0 ] || return 1
+            for dep in "${deps[@]}"; do
+              dep="${dep#"${dep%%[![:space:]]*}"}"
+              case "$dep" in
+                home-assistant/actions/* | hacs/action) ;;
+                *) return 1 ;;
+              esac
+            done
+          }
+          if trusted_commit_bump; then
+            UPDATE_TYPE=trusted-commit-bump
+          fi
+
           case "$UPDATE_TYPE" in
+            trusted-commit-bump)
+              echo "eligible=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::Commit bump of a trusted action ($DEPENDENCIES): will merge once every check passes."
+              ;;
             version-update:semver-patch|version-update:semver-minor)
               echo "eligible=true" >> "$GITHUB_OUTPUT"
               echo "::notice::$UPDATE_TYPE ($DEPENDENCIES): will merge once every check passes."
@@ -169,5 +199,18 @@ jobs:
             echo "::notice::The pull request changed while waiting ($state); leaving it to the newer run."
             exit 0
           fi
-          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --match-head-commit "$HEAD_SHA"
-          echo "::notice::Merged after $passed passing checks."
+          # Another merge to the default branch at the same moment fails this one with "Base
+          # branch was modified"; the pull request is still mergeable, so try again.
+          for merge_attempt in 1 2 3; do
+            if output="$(gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --match-head-commit "$HEAD_SHA" 2>&1)"; then
+              echo "::notice::Merged after $passed passing checks."
+              exit 0
+            fi
+            echo "$output"
+            if [[ "$output" != *"Base branch was modified"* ]] || [ "$merge_attempt" -eq 3 ]; then
+              echo "::error::Merge failed."
+              exit 1
+            fi
+            echo "The default branch moved during the merge; retrying in 20 seconds."
+            sleep 20
+          done
