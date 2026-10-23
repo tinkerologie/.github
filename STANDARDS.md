@@ -28,7 +28,8 @@ One ruleset per repository, named **Default branch protection**:
 - Changes through pull requests only; squash merge only.
 - All review conversations must be resolved before merging (CodeRabbit included).
 - Required status check: **PR Governance**.
-- No Copilot code review: CodeRabbit is the only review bot.
+- No Copilot code review. CodeRabbit reviews every repository; Greptile also reviews
+  `vault`, `ha-vault` and `ha-philips-airpurifier`.
 - Repository admins may bypass.
 
 ## 3. Files every repository has
