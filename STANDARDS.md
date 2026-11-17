@@ -146,10 +146,12 @@ The organization label set below is synced to every repository by the
 - `dependabot-auto-merge.yml` verifies Dependabot commit metadata, then enables
   GitHub native auto-merge for minor/patch updates and trusted action commit bumps
   on protected public repositories. Required CI Gate, Coverage Gate where configured,
-  PR Governance and platform validation checks where configured, and review-thread
+  Dependency Policy, PR Governance and platform validation checks where configured, and review-thread
   resolution still apply. Optional
   AI reviews and raw Codecov statuses are not independent merge requirements. Major
-  updates remain manual. The workflow releases its runner immediately; GitHub waits
+  updates remain manual. Ineligible updates revoke an existing auto-merge request;
+  the required Dependency Policy check prevents a merge before current-head metadata
+  verification and that revocation finish. The workflow releases its runner immediately; GitHub waits
   for the required checks and retries when they change. The private Free-plan
   exception retains the conservative polling implementation because branch rules
   cannot enforce equivalent checks there. GITHUB_TOKEN merges do not trigger

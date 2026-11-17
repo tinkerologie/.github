@@ -33,3 +33,5 @@ jobs:
         run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_coverage_gate.py
       - name: Test workflow baseline regression detection
         run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_workflow_baseline.py
+      - name: Test dependency eligibility and auto-merge revocation
+        run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_dependabot_policy.py

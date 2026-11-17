@@ -92,6 +92,16 @@ jobs:
               ;;
           esac
 
+      - name: Revoke stale auto-merge eligibility
+        if: always() && inputs.native-auto-merge && steps.decide.outputs.eligible != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ "$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
+            gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --disable-auto
+          fi
       - name: Enable native auto-merge after required checks
         if: steps.decide.outputs.eligible == 'true' && inputs.native-auto-merge
         env:
