@@ -167,7 +167,10 @@ they enforce.
 [governance-manifest.json](governance-manifest.json) records repository profiles,
 required checks and Free-plan exceptions. The weekly Governance Drift workflow
 reads public repository metadata and rules and writes one Actions summary; it
-fails on drift without changing settings or opening issues. Billing dashboards
+fails on drift without changing settings or opening issues. It also parses public
+workflows to check action pins, permissions, timeouts, artifact retention, coverage
+source paths and Codecov thresholds against the manifest. No audited repository
+code is executed. Billing dashboards
 and private repository exceptions still need owner review; the workflow has no
 billing credentials. Merge settings not exposed to its read-only token are listed
 for owner verification; they are not claimed as checked. Keep standard hosted
@@ -181,7 +184,7 @@ Documentation, dependency manifests/lockfiles, test-only changes and deletions p
 without a Codecov result. Labels and bot authorship never grant an exemption, so a
 mixed dependency/source PR still needs coverage. Source outside the instrumented
 paths remains subject to CI and review; expanding coverage requires updating the
-caller's `source-pattern` as well as the test configuration.
+caller's `source-pattern`, the manifest and the test configuration.
 
 The metadata-only gate runs from trusted default-branch workflows on PR, Codecov
 status and completed CI events. It never checks out or executes PR code. No runner

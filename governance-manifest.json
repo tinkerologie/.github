@@ -19,7 +19,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^src/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "coderabbit",
@@ -64,7 +67,10 @@
         "HACS"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "100%"
     },
     {
       "name": "ha-bom-australia",
@@ -78,7 +84,10 @@
         "Release zip"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "ha-globird",
@@ -94,7 +103,10 @@
         "Hassfest"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "95%"
     },
     {
       "name": "ha-philips-airpurifier",
@@ -109,7 +121,10 @@
         "Hassfest"
       ],
       "exception": null,
-      "greptile_oss": true
+      "greptile_oss": true,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "ha-translink",
@@ -125,7 +140,10 @@
         "Release zip"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "ha-unifi-insights",
@@ -140,7 +158,10 @@
         "Hassfest"
       ],
       "exception": null,
-      "greptile_oss": true
+      "greptile_oss": true,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "ha-unraid",
@@ -154,7 +175,10 @@
         "Hassfest"
       ],
       "exception": null,
-      "greptile_oss": true
+      "greptile_oss": true,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "ha-unraid-management-agent",
@@ -168,7 +192,10 @@
         "Hassfest"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^custom_components/.*\\.py$",
+      "codecov_config": ".codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "ha-vault",
@@ -198,7 +225,10 @@
         "Quality Scale"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^((custom_components/wattpilot/|scripts/).*\\.py|frontend/src/.*\\.[cm]?[jt]sx?)$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "homebridge-actronair-neo",
@@ -210,7 +240,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^src/.*\\.[cm]?[jt]sx?$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "homebridge-philips-airctrl",
@@ -222,7 +255,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^src/.*\\.[cm]?[jt]sx?$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "homebridge-unifi-protect-api",
@@ -234,7 +270,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^src/.*\\.[cm]?[jt]sx?$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "100%"
     },
     {
       "name": "homebridge-ventair-ceiling-fan",
@@ -278,7 +317,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^src/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "unraid-api",
@@ -290,7 +332,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^(src/|script/).*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "95%"
     },
     {
       "name": "unraid-apps",
@@ -312,7 +357,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": true
+      "greptile_oss": true,
+      "coverage_source_pattern": "\\.go$",
+      "codecov_config": ".codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "vault",
@@ -324,7 +372,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": true
+      "greptile_oss": true,
+      "coverage_source_pattern": "^((cmd|internal)/.*\\.go|web/src/.*\\.(svelte|[cm]?[jt]sx?))$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     },
     {
       "name": "wattpilot-api",
@@ -336,7 +387,10 @@
         "Coverage Gate"
       ],
       "exception": null,
-      "greptile_oss": false
+      "greptile_oss": false,
+      "coverage_source_pattern": "^src/.*\\.py$",
+      "codecov_config": "codecov.yml",
+      "patch_target": "90%"
     }
   ]
 }
