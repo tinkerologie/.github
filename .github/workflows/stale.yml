@@ -17,13 +17,19 @@ on:
       exempt-issue-labels:
         type: string
         default: "pinned,security,confirmed,work-in-progress,priority: critical,priority: high,ready-for-agent,ready-for-human,blocked"
+        description: Repository exemptions, always combined with protected workflow labels.
       exempt-pr-labels:
         type: string
         default: "pinned,security,work-in-progress,ready-for-agent,ready-for-human,blocked"
+        description: Repository exemptions, always combined with protected workflow labels.
       operations-per-run:
         type: number
         default: 100
 
+      debug-only:
+        description: Read-only preview; never label, comment on, or close issues/PRs.
+        type: boolean
+        default: false
 # Callers must grant the same scopes; a called workflow cannot elevate them.
 permissions:
   actions: write # actions/stale saves its progress in the Actions cache when it hits operations-per-run
@@ -55,10 +61,15 @@ jobs:
             It will be closed in ${{ inputs.days-before-close }} days unless there is new activity.
             Rebase on the default branch, resolve any conflicts, and address open review and Codecov feedback to keep it open.
           close-issue-message: "Closed because it stayed stale with no activity. Reopen it if it is still relevant."
-          close-pr-message: "Closed because it stayed stale with no activity. Reopen it or open a fresh PR rebased on the default branch."
+          close-pr-message: "Closed because it stayed stale with no activity. Reopen it or open a fresh PR rebased on the
+            default branch."
           close-issue-reason: not_planned
-          exempt-issue-labels: ${{ inputs.exempt-issue-labels }}
-          exempt-pr-labels: ${{ inputs.exempt-pr-labels }}
+          exempt-issue-labels: ${{ format('{0},{1}', env.PROTECTED_WORKFLOW_LABELS, inputs.exempt-issue-labels) }}
+          exempt-pr-labels: ${{ format('{0},{1}', env.PROTECTED_WORKFLOW_LABELS, inputs.exempt-pr-labels) }}
           exempt-draft-pr: false
           remove-stale-when-updated: true
           operations-per-run: ${{ inputs.operations-per-run }}
+          debug-only: ${{ inputs.debug-only }}
+    env:
+      PROTECTED_WORKFLOW_LABELS: >-
+        needs-triage,needs-info,ready-for-agent,ready-for-human,wontfix,triage,blocked,work-in-progress

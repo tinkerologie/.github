@@ -35,3 +35,5 @@ jobs:
         run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_workflow_baseline.py
       - name: Test dependency eligibility and auto-merge revocation
         run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_dependabot_policy.py
+      - name: Test protected stale labels and dry-run wiring
+        run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_stale_policy.py

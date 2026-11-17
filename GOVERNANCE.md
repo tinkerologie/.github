@@ -63,13 +63,21 @@ see [STANDARDS.md](STANDARDS.md#free-only-operation-and-drift) for recovery.
 
 Issues and pull requests with no activity for **14 days** are labeled `stale`
 and closed **30 days** later if nothing changes. Any comment, push, or label
-change resets the timer. Exempt labels:
+change resets the timer. The five Matt Pocock workflow states are always exempt
+from being marked stale or automatically closed: `needs-triage`, `needs-info`,
+`ready-for-agent`, `ready-for-human` and `wontfix`. The legacy `triage` label and
+active-work labels `blocked` and `work-in-progress` are also always protected.
+Repository overrides add to these protections; they cannot replace them.
 
-- Issues: `pinned`, `security`, `confirmed`, `work-in-progress`,
-  `priority: critical`, `priority: high`, `ready-for-agent`, `ready-for-human`,
-  `blocked` (repositories may add more).
-- Pull requests: `pinned`, `security`, `work-in-progress`, `ready-for-agent`,
-  `ready-for-human`, `blocked`.
+Additional exemptions:
+
+- Issues: `pinned`, `security`, `confirmed`, `priority: critical`, `priority: high`.
+- Pull requests: `pinned`, `security`.
+- Repositories may add further exemptions, such as Vault's `status: blocked`.
+
+Manually dispatch **Stale** with `dry-run: true` to preview decisions without
+labeling, commenting or closing anything. Manual runs default to this preview;
+the daily scheduled sweep continues to apply the policy.
 
 ## Automation
 
