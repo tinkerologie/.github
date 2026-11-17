@@ -15,7 +15,8 @@
       "visibility": "public",
       "profile": "application",
       "required_checks": [
-        "CI Gate"
+        "CI Gate",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": false
@@ -36,7 +37,9 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "HACS",
+        "Hassfest"
       ],
       "exception": null,
       "greptile_oss": false
@@ -55,7 +58,10 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "Hassfest",
+        "HACS"
       ],
       "exception": null,
       "greptile_oss": false
@@ -65,7 +71,11 @@
       "visibility": "public",
       "profile": "application",
       "required_checks": [
-        "CI Gate"
+        "CI Gate",
+        "Coverage Gate",
+        "Hassfest",
+        "HACS",
+        "Release zip"
       ],
       "exception": null,
       "greptile_oss": false
@@ -76,7 +86,12 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "Version",
+        "HACS",
+        "Release zip",
+        "Hassfest"
       ],
       "exception": null,
       "greptile_oss": false
@@ -87,7 +102,11 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "HACS",
+        "Release zip",
+        "Hassfest"
       ],
       "exception": null,
       "greptile_oss": true
@@ -98,7 +117,12 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "Version",
+        "HACS",
+        "Hassfest",
+        "Release zip"
       ],
       "exception": null,
       "greptile_oss": false
@@ -109,7 +133,11 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "HACS",
+        "Release zip",
+        "Hassfest"
       ],
       "exception": null,
       "greptile_oss": true
@@ -120,7 +148,10 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "HACS",
+        "Hassfest"
       ],
       "exception": null,
       "greptile_oss": true
@@ -131,7 +162,10 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "HACS",
+        "Hassfest"
       ],
       "exception": null,
       "greptile_oss": false
@@ -142,7 +176,10 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Hassfest",
+        "Release zip",
+        "HACS"
       ],
       "exception": null,
       "greptile_oss": false
@@ -153,7 +190,12 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate",
+        "Version",
+        "HACS",
+        "Release zip",
+        "Quality Scale"
       ],
       "exception": null,
       "greptile_oss": false
@@ -164,7 +206,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": false
@@ -175,7 +218,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": false
@@ -186,7 +230,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": false
@@ -229,7 +274,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": false
@@ -240,7 +286,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": false
@@ -261,7 +308,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": true
@@ -272,7 +320,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": true
@@ -283,7 +332,8 @@
       "profile": "application",
       "required_checks": [
         "CI Gate",
-        "PR Governance"
+        "PR Governance",
+        "Coverage Gate"
       ],
       "exception": null,
       "greptile_oss": false

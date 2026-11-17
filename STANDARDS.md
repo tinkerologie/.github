@@ -146,7 +146,8 @@ The organization label set below is synced to every repository by the
 - `dependabot-auto-merge.yml` verifies Dependabot commit metadata, then enables
   GitHub native auto-merge for minor/patch updates and trusted action commit bumps
   on protected public repositories. Required CI Gate, Coverage Gate where configured,
-  PR Governance where configured, and review-thread resolution still apply. Optional
+  PR Governance and platform validation checks where configured, and review-thread
+  resolution still apply. Optional
   AI reviews and raw Codecov statuses are not independent merge requirements. Major
   updates remain manual. The workflow releases its runner immediately; GitHub waits
   for the required checks and retries when they change. The private Free-plan
@@ -187,9 +188,15 @@ status and completed CI events. It never checks out or executes PR code. No runn
 polls for Codecov. Dispatch **Coverage Gate** with a PR number (or `0` for all open
 PRs) to reconcile existing results; `dry-run` reports without writing checks.
 Codecov reads thresholds from `main` and does not wait for other CI statuses, avoiding
-a circular wait. CI Gate still enforces build/test success. Existing 95% and 100%
+a circular wait. CI Gate still enforces build/test success. Upload transport failures are nonfatal
+to CI itself; Coverage Gate remains pending for source changes without a result,
+so a Codecov outage cannot block docs or dependency-only PRs through an upload step. Existing 95% and 100%
 patch targets are retained; other covered repositories require 90%, without a
 threshold tolerance. The manifest lists which repositories require Coverage Gate.
+
+Issue-labeler reconciliation runs weekly; opened/edited/reopened issue events still
+label issues immediately. Stale-item sweeps retain their daily cadence and existing
+14/30-day policy. Platform validators retain daily upstream compatibility checks.
 
 Every runner job has an explicit timeout. Newly bounded CI/validation jobs allow
 30 minutes, release/publish jobs 60, and metadata jobs 10; deliberately configured
