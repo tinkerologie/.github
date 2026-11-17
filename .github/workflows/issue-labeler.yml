@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   label:
+    timeout-minutes: 10
     name: Apply bug/enhancement label
     runs-on: ubuntu-latest
     permissions:

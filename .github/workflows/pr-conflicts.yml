@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   conflicts:
+    timeout-minutes: 10
     name: Label conflicting PRs
     runs-on: ubuntu-latest
     permissions:

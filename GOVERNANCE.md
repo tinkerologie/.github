@@ -47,12 +47,17 @@ Every linked issue must exist, including cross-repository references; a referenc
 
 ## 4. Coverage
 
-In repositories that report to Codecov, `codecov/patch` must pass: at least
+In repositories that report to Codecov, the required **Coverage Gate** verifies
+`codecov/patch` for added or modified instrumented source: at least
 **90%** of the lines you add or change must be covered by tests (some
 repositories set a higher target in their Codecov configuration). The gate is
 the percentage; still, add tests for the uncovered lines the Codecov PR comment
 lists, and explain in the PR description any line you leave uncovered. Do not
-lower coverage targets or add ignore rules to pass.
+lower coverage targets or add ignore rules to pass. Documentation-only,
+dependency-manifest/lockfile-only, test-only and deletion-only changes pass the
+coverage gate without a Codecov result. Mixed dependency and source changes still
+require coverage. Missing source coverage remains pending until Codecov reports;
+see [STANDARDS.md](STANDARDS.md#free-only-operation-and-drift) for recovery.
 
 ## 5. Stale items
 

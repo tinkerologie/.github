@@ -25,6 +25,7 @@ concurrency:
 
 jobs:
   sync:
+    timeout-minutes: 10
     name: Sync
     runs-on: ubuntu-latest
     permissions:

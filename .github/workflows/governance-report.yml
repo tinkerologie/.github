@@ -45,6 +45,7 @@ permissions: {}
 
 jobs:
   report:
+    timeout-minutes: 10
     name: Tinkerologie-Bot report
     runs-on: ubuntu-latest
     # Write reports for a pull request one at a time and never cancel a write in

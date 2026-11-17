@@ -1,33 +1,19 @@
 name: Dependabot Auto-merge
 
-# Reusable workflow: merges a Dependabot pull request that only contains patch or minor
-# updates once the other checks on its head commit have finished without a failure
-# (skipped and neutral results are fine). Major updates, and updates Dependabot cannot
-# classify, are left for a person. The one exception is an action that has no releases
-# and is pinned to a commit on its default branch (home-assistant/actions, hacs/action):
-# Dependabot cannot classify a commit-to-commit bump, so those owners are trusted to
-# merge like a patch.
-#
-# GitHub's own auto-merge (`gh pr merge --auto`) waits only for *required* checks. PR
-# Governance is skipped for Dependabot pull requests. CI Gate now protects build
-# and test results; this job additionally waits for other reported checks. This job waits for every check and commit status on the
-# head commit itself, and merges only if they all passed. A Codecov check that is still
-# pending is not waited for (patch coverage never reports on lock-file-only changes), but
-# a Codecov failure blocks the merge like any other.
-#
-# If a check fails and is later re-run successfully, nothing restarts this workflow:
-# re-run the Auto-merge job too, or comment `@dependabot rebase` on the pull request.
-#
-# A merge still has to satisfy the branch ruleset: open review threads (CodeRabbit) block
-# it, and the job then fails so the pull request is left for a person. A merge that races
-# another push to the default branch ("Base branch was modified") is retried.
-#
-# Callers run this on `pull_request` (opened, synchronize, reopened). The merge is made
-# with GITHUB_TOKEN, so it does not trigger workflows on the resulting push to the
-# default branch.
+# Verified minor/patch Dependabot updates use GitHub native auto-merge on public
+# repositories with required branch checks. This exits immediately instead of
+# holding a runner while checks run. Majors/unclassified updates remain manual.
+# The private Free-plan exception retains polling because its branch rules cannot
+# enforce the same checks. Never enable native-auto-merge without required CI.
+# GITHUB_TOKEN merges do not trigger ordinary push/release workflows.
 
 on:
   workflow_call:
+    inputs:
+      native-auto-merge:
+        description: Enable only where branch rules enforce the required CI and coverage gates.
+        type: boolean
+        default: false
 
 # Callers must grant the same scopes; a called workflow cannot elevate them.
 permissions:
@@ -44,7 +30,7 @@ jobs:
     # Dependabot branch is never auto-merged).
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: ${{ inputs.native-auto-merge && 5 || 60 }}
     # A newer push to the pull request supersedes the wait on the older commit.
     concurrency:
       group: dependabot-auto-merge-${{ github.event.pull_request.number }}
@@ -94,11 +80,11 @@ jobs:
           case "$UPDATE_TYPE" in
             trusted-commit-bump)
               echo "eligible=true" >> "$GITHUB_OUTPUT"
-              echo "::notice::Commit bump of a trusted action ($DEPENDENCIES): will merge once every check passes."
+              echo "::notice::Commit bump of a trusted action ($DEPENDENCIES): will merge when the configured checks pass."
               ;;
             version-update:semver-patch|version-update:semver-minor)
               echo "eligible=true" >> "$GITHUB_OUTPUT"
-              echo "::notice::$UPDATE_TYPE ($DEPENDENCIES): will merge once every check passes."
+              echo "::notice::$UPDATE_TYPE ($DEPENDENCIES): will merge when the configured checks pass."
               ;;
             *)
               echo "eligible=false" >> "$GITHUB_OUTPUT"
@@ -106,8 +92,16 @@ jobs:
               ;;
           esac
 
+      - name: Enable native auto-merge after required checks
+        if: steps.decide.outputs.eligible == 'true' && inputs.native-auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --squash --match-head-commit "$HEAD_SHA"
       - name: Wait for every other check, then merge
-        if: steps.decide.outputs.eligible == 'true'
+        if: steps.decide.outputs.eligible == 'true' && !inputs.native-auto-merge
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

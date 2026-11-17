@@ -32,6 +32,7 @@ permissions:
 
 jobs:
   stale:
+    timeout-minutes: 10
     name: Mark and close stale items
     runs-on: ubuntu-latest
     permissions:

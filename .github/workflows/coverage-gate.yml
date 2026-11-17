@@ -1,0 +1,87 @@
+name: Coverage Gate
+on:
+  workflow_call:
+    inputs:
+      source-pattern:
+        type: string
+        required: true
+      pr-number:
+        type: number
+        default: 0
+      dry-run:
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: read
+  checks: write
+jobs:
+  evaluate:
+    name: Evaluate coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate changed files and authenticated Codecov status
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          SOURCE_PATTERN: ${{ inputs.source-pattern }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        with:
+          script: |
+            // Metadata only: never check out, download, import, or execute PR content.
+            const {owner, repo} = context.repo;
+            const api = {owner, repo};
+            const source = new RegExp(process.env.SOURCE_PATTERN);
+            const excluded = /(^|\/)(__tests__|tests?|testdata|fixtures|node_modules|docs)\/|(^|\/)test_[^/]+\.py$|(_test\.go|\.(test|spec)\.[cm]?[jt]sx?|\.d\.ts)$/;
+            const changedSource = file => file.additions > 0 && source.test(file.filename) && !excluded.test(file.filename);
+            const dryRun = process.env.DRY_RUN === 'true';
+            const requested = Number(process.env.PR_NUMBER || 0);
+            if (!Number.isSafeInteger(requested) || requested < 0) throw new Error('Invalid PR number');
+            const event = context.payload;
+            const eventSha = event.pull_request?.head?.sha || event.sha || event.workflow_run?.head_sha;
+            let candidates;
+            if (event.pull_request || requested) {
+              candidates = [{number: event.pull_request?.number || requested}];
+            } else {
+              candidates = await github.paginate(github.rest.pulls.list, {...api, state:'open', per_page:100});
+              if (eventSha) candidates = candidates.filter(pr => pr.head.sha === eventSha);
+              else if (context.eventName !== 'workflow_dispatch') throw new Error('Missing event commit');
+            }
+            for (const candidate of candidates) {
+              const {data: pr} = await github.rest.pulls.get({...api, pull_number:candidate.number});
+              if (pr.state !== 'open' && !dryRun) continue;
+              if (pr.base.repo.full_name !== `${owner}/${repo}` || pr.base.ref !== 'main') continue;
+              if (eventSha && pr.head.sha !== eventSha) { core.info('Superseded PR head; no write'); continue; }
+              const files = await github.paginate(github.rest.pulls.listFiles, {...api, pull_number:pr.number, per_page:100});
+              if (files.length !== pr.changed_files || files.length >= 3000) throw new Error('Incomplete PR file list; refusing to pass');
+              const changed = files.filter(changedSource);
+              let state = 'success';
+              let message = 'No added or modified lines in coverage-instrumented source. Documentation, dependency manifests, tests and deletions do not need a Codecov patch result.';
+              if (changed.length) {
+                // The full statuses API includes creator identity; the combined endpoint does not.
+                const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {...api, ref:pr.head.sha, per_page:100});
+                const status = statuses.filter(s => s.context === 'codecov/patch' && s.creator?.id === 22429695 && s.creator?.login === 'codecov[bot]').sort((a,b) => b.id-a.id)[0];
+                state = status?.state || 'pending';
+                message = `${changed.length} changed source file(s). Codecov patch result: ${state}. Repository coverage targets apply; CI Gate separately requires tests and builds. Missing results remain pending. Re-run CI to upload coverage, or dispatch Coverage Gate to reconcile an existing result.`;
+                if (!['success','pending','failure','error'].includes(state)) throw new Error('Unknown Codecov state');
+              }
+              core.info(JSON.stringify({pr:pr.number,head:pr.head.sha,sourceFiles:changed.length,state,dryRun}));
+              await core.summary.addHeading(`Coverage Gate — #${pr.number}`).addRaw(message).write();
+              if (dryRun) continue;
+              const {data: fresh} = await github.rest.pulls.get({...api, pull_number:pr.number});
+              if (fresh.head.sha !== pr.head.sha || fresh.state !== 'open') { core.info('PR changed during evaluation; no write'); continue; }
+              const externalId = `coverage-gate:${pr.number}`;
+              const checks = await github.paginate(github.rest.checks.listForRef, {...api, ref:pr.head.sha, check_name:'Coverage Gate', per_page:100});
+              const previous = checks.filter(c => c.app?.id === 15368 && c.external_id === externalId).sort((a,b) => b.id-a.id)[0];
+              const desired = state === 'pending' ? null : state === 'success' ? 'success' : 'failure';
+              if (previous && previous.conclusion === desired && (desired || previous.status === 'in_progress') && previous.output?.summary === message) continue;
+              const result = {...api, name:'Coverage Gate', external_id:externalId,
+                status: desired ? 'completed' : 'in_progress',
+                output:{title: desired === 'success' ? 'Coverage requirement satisfied' : desired === 'failure' ? 'Patch coverage failed' : 'Awaiting Codecov patch coverage', summary:message}};
+              if (desired) { result.conclusion=desired; result.completed_at=new Date().toISOString(); }
+              // Reopening a completed check creates a new run; a completed conclusion cannot be cleared by update.
+              if (previous && (desired || previous.status !== 'completed')) await github.rest.checks.update({...result,check_run_id:previous.id});
+              else await github.rest.checks.create({...result,head_sha:pr.head.sha});
+            }

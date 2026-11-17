@@ -143,18 +143,16 @@ The organization label set below is synced to every repository by the
   its own makes the lock unsatisfiable and fails the whole update run; they move when
   `pytest-homeassistant-custom-component` does. `homeassistant` itself is grouped with
   `pytest-homeassistant-custom-component` for the same reason.
-- `dependabot-auto-merge.yml` merges a Dependabot pull request whose largest update is a
-  patch or minor version, or that moves an action from `home-assistant/actions` or
-  `hacs/action` from one commit to another (those have no releases, so Dependabot cannot
-  classify the bump), once the other checks and commit statuses on its head commit have
-  finished without a failure (skipped and neutral results are fine). A Codecov check that is still pending is not waited for (patch coverage never
-  reports on lock-file-only changes); a Codecov failure blocks the merge. GitHub's
-  built-in auto-merge waits for required CI Gate; PR Governance is skipped for
-  Dependabot. This merger additionally waits for other reported check results. Majors and grouped pull requests containing a
-  major are left for a person, and open review threads still block the merge. A merge that
-  races another push to the default branch is retried. After
-  re-running a failed check, re-run the Auto-merge job too (or comment
-  `@dependabot rebase`); nothing restarts it automatically.
+- `dependabot-auto-merge.yml` verifies Dependabot commit metadata, then enables
+  GitHub native auto-merge for minor/patch updates and trusted action commit bumps
+  on protected public repositories. Required CI Gate, Coverage Gate where configured,
+  PR Governance where configured, and review-thread resolution still apply. Optional
+  AI reviews and raw Codecov statuses are not independent merge requirements. Major
+  updates remain manual. The workflow releases its runner immediately; GitHub waits
+  for the required checks and retries when they change. The private Free-plan
+  exception retains the conservative polling implementation because branch rules
+  cannot enforce equivalent checks there. GITHUB_TOKEN merges do not trigger
+  ordinary push/release workflows; release workflows retain their own triggers.
 
 ## 7. Issues and pull requests
 
@@ -174,8 +172,27 @@ billing credentials. Merge settings not exposed to its read-only token are liste
 for owner verification; they are not claimed as checked. Keep standard hosted
 runners for untrusted public PRs.
 
-Required CI retains existing test coverage thresholds. Codecov patch coverage is
-still a contributor requirement, but its asynchronous status is not universally
-required by branch rules: it can remain absent on lockfile/docs-only changes.
-Do not describe a green CI Gate as proof that an unavailable Codecov patch result
-passed. Review source-change coverage before merging; do not lower thresholds.
+Required CI retains existing test coverage thresholds. The shared **Coverage Gate**
+checks actual changed files in the paths instrumented by each repository's coverage
+job. Added or modified source requires an authenticated `codecov/patch` result for
+that exact PR head. Missing results remain pending; failed results fail the gate.
+Documentation, dependency manifests/lockfiles, test-only changes and deletions pass
+without a Codecov result. Labels and bot authorship never grant an exemption, so a
+mixed dependency/source PR still needs coverage. Source outside the instrumented
+paths remains subject to CI and review; expanding coverage requires updating the
+caller's `source-pattern` as well as the test configuration.
+
+The metadata-only gate runs from trusted default-branch workflows on PR, Codecov
+status and completed CI events. It never checks out or executes PR code. No runner
+polls for Codecov. Dispatch **Coverage Gate** with a PR number (or `0` for all open
+PRs) to reconcile existing results; `dry-run` reports without writing checks.
+Codecov reads thresholds from `main` and does not wait for other CI statuses, avoiding
+a circular wait. CI Gate still enforces build/test success. Existing 95% and 100%
+patch targets are retained; other covered repositories require 90%, without a
+threshold tolerance. The manifest lists which repositories require Coverage Gate.
+
+Every runner job has an explicit timeout. Newly bounded CI/validation jobs allow
+30 minutes, release/publish jobs 60, and metadata jobs 10; deliberately configured
+limits remain unchanged. New disposable artifacts default to 7 days; shorter or
+purpose-specific existing retention remains intact. Keep per-language CI matrices
+where they test supported runtimes; do not replace them with a single generic build.

@@ -26,6 +26,7 @@ permissions:
 
 jobs:
   label:
+    timeout-minutes: 10
     name: Label
     runs-on: ubuntu-latest
     # Overlapping runs (an edit right after a push) would otherwise race on the labels.

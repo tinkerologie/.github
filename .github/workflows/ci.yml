@@ -29,3 +29,5 @@ jobs:
         run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/validate_config.py
       - name: Test governance reporting without GitHub writes
         run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_governance_report.py
+      - name: Test coverage gating without GitHub writes
+        run: uv run --no-project --with ruamel.yaml==0.19.1 python scripts/test_coverage_gate.py
