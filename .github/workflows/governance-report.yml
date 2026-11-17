@@ -29,9 +29,9 @@ on:
         type: string
         default: PR Governance
       client-id:
-        description: Tinkerologie-Bot GitHub App client ID (org variable TINKER_BOT_CLIENT_ID).
+        description: Tinkerologie-Bot client ID; optional for repository-token reporting.
         type: string
-        required: true
+        default: ''
       use-github-token:
         description: Use the repository token when organisation credentials are unavailable.
         type: boolean
