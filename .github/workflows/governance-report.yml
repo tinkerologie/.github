@@ -32,6 +32,10 @@ on:
         description: Tinkerologie-Bot GitHub App client ID (org variable TINKER_BOT_CLIENT_ID).
         type: string
         required: true
+      use-github-token:
+        description: Use the repository token when organisation credentials are unavailable.
+        type: boolean
+        default: false
     secrets:
       private-key:
         description: Tinkerologie-Bot GitHub App private key (org secret TINKER_BOT_PRIVATE_KEY).
@@ -48,7 +52,10 @@ jobs:
     concurrency:
       group: tinkerologie-bot-report-${{ github.repository }}-${{ inputs.pr-number }}
       cancel-in-progress: false
-    permissions: {}
+    permissions:
+      issues: write
+      pull-requests: write
+      checks: read
     steps:
       # Workflow `if:` conditions cannot read secrets, so check here: skip quietly
       # where the org secret is not available (e.g. private repos on the Free plan).
@@ -62,12 +69,12 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Governance report skipped::Tinkerologie-Bot credentials are not available to this repository."
+            echo "::notice::App credentials unavailable; repository-token fallback must be explicitly selected."
           fi
 
       - name: Mint Tinkerologie-Bot token
         id: token
-        if: steps.credentials.outputs.ready == 'true'
+        if: steps.credentials.outputs.ready == 'true' && !inputs.use-github-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ inputs.client-id }}
@@ -80,7 +87,7 @@ jobs:
           permission-checks: read # find newer governance runs for the same pull request
 
       - name: Post or update the governance comment
-        if: steps.credentials.outputs.ready == 'true'
+        if: inputs.use-github-token || steps.credentials.outputs.ready == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           PR_NUMBER: ${{ inputs.pr-number }}
@@ -89,9 +96,9 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           CHECK_NAME: ${{ inputs.check-name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          BOT_LOGIN: ${{ steps.token.outputs.app-slug }}[bot]
+          BOT_LOGIN: ${{ inputs.use-github-token && 'github-actions' || steps.token.outputs.app-slug }}[bot]
         with:
-          github-token: ${{ steps.token.outputs.token }}
+          github-token: ${{ inputs.use-github-token && github.token || steps.token.outputs.token }}
           script: |
             const MARKER = "<!-- tinkerologie-bot:governance -->";
             const GOVERNANCE_URL = "https://github.com/tinkerologie/.github/blob/main/GOVERNANCE.md";

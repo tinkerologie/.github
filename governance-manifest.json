@@ -1,0 +1,292 @@
+{
+  "repositories": [
+    {
+      "name": ".github",
+      "visibility": "public",
+      "profile": "configuration",
+      "required_checks": [
+        "CI Gate"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "bom-weather-api",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "coderabbit",
+      "visibility": "public",
+      "profile": "configuration",
+      "required_checks": [
+        "CI Gate"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-actronair-neo",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-aquaro",
+      "visibility": "private",
+      "profile": "application",
+      "required_checks": [],
+      "exception": "Private GitHub Free: manual CI/merge verification; repository-token reports.",
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-ausnz-disaster-watch",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-bom-australia",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-globird",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-philips-airpurifier",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": true
+    },
+    {
+      "name": "ha-translink",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-unifi-insights",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": true
+    },
+    {
+      "name": "ha-unraid",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": true
+    },
+    {
+      "name": "ha-unraid-management-agent",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-vault",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "ha-wattpilot",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "homebridge-actronair-neo",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "homebridge-philips-airctrl",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "homebridge-unifi-protect-api",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "homebridge-ventair-ceiling-fan",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "philips-airctrl",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "recyclarr-config",
+      "visibility": "public",
+      "profile": "configuration",
+      "required_checks": [
+        "CI Gate"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "unifi-official-api",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "unraid-api",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "unraid-apps",
+      "visibility": "public",
+      "profile": "configuration",
+      "required_checks": [
+        "CI Gate"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    },
+    {
+      "name": "unraid-management-agent",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": true
+    },
+    {
+      "name": "vault",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": true
+    },
+    {
+      "name": "wattpilot-api",
+      "visibility": "public",
+      "profile": "application",
+      "required_checks": [
+        "CI Gate",
+        "PR Governance"
+      ],
+      "exception": null,
+      "greptile_oss": false
+    }
+  ]
+}

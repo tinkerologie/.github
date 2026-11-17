@@ -27,9 +27,13 @@ One ruleset per repository, named **Default branch protection**:
 - Block deletion and force pushes of `main`.
 - Changes through pull requests only; squash merge only.
 - All review conversations must be resolved before merging (CodeRabbit included).
-- Required status check: **PR Governance**.
-- No Copilot code review. CodeRabbit reviews every repository; Greptile also reviews
-  `vault`, `ha-vault` and `ha-philips-airpurifier`.
+- Required status check: **CI Gate**, plus **PR Governance** where that workflow exists.
+  CI Gate checks every required build/test/lint/coverage job; only explicitly
+  documented event-specific skips are allowed. It must report for docs-only PRs too.
+- No automatic Copilot code review on Copilot Free. CodeRabbit reviews are
+  subject to the free plan and repository quota. Greptile OSS review is enabled for
+  `vault`, `unraid-management-agent`, `ha-unraid`, `ha-unifi-insights` and
+  `ha-philips-airpurifier`; do not enable other repositories without free OSS approval.
 - Repository admins may bypass.
 
 ## 3. Files every repository has
@@ -158,3 +162,18 @@ Issue forms and the PR template share one structure across all repositories;
 only the project-specific fields differ (versions, affected areas, standards
 checklists). See [GOVERNANCE.md](GOVERNANCE.md) for the contribution rules
 they enforce.
+
+## Free-only operation and drift
+
+[governance-manifest.json](governance-manifest.json) records repository profiles,
+required checks and Free-plan exceptions. The weekly Governance Drift workflow
+reads public repository settings and rules and writes one Actions summary; it
+fails on drift without changing settings or opening issues. Billing dashboards
+and private repository exceptions still need owner review; the workflow has no
+billing credentials. Keep standard hosted runners for untrusted public PRs.
+
+Required CI retains existing test coverage thresholds. Codecov patch coverage is
+still a contributor requirement, but its asynchronous status is not universally
+required by branch rules: it can remain absent on lockfile/docs-only changes.
+Do not describe a green CI Gate as proof that an unavailable Codecov patch result
+passed. Review source-change coverage before merging; do not lower thresholds.

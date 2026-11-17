@@ -9,8 +9,8 @@ name: Dependabot Auto-merge
 # merge like a patch.
 #
 # GitHub's own auto-merge (`gh pr merge --auto`) waits only for *required* checks. PR
-# Governance, the only required check, is skipped for Dependabot pull requests, so it
-# would merge before CI had run. This job waits for every check and commit status on the
+# Governance is skipped for Dependabot pull requests. CI Gate now protects build
+# and test results; this job additionally waits for other reported checks. This job waits for every check and commit status on the
 # head commit itself, and merges only if they all passed. A Codecov check that is still
 # pending is not waited for (patch coverage never reports on lock-file-only changes), but
 # a Codecov failure blocks the merge like any other.

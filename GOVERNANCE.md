@@ -18,8 +18,8 @@ including AI coding agents (Codex, Claude Code, Copilot, and others).
   the template headings. It skips issues labeled `question`, `duplicate`,
   `invalid`, `wontfix`, or `no-type`, leaves ambiguous issues for CodeRabbit,
   and never re-adds a type label that a maintainer removed.
-- CodeRabbit posts a **Coding Plan** on the issue once it is labeled. Use that
-  plan when implementing.
+- Use an available CodeRabbit **Coding Plan**. When unavailable, follow the
+  free-tier fallback below; a missing paid feature must not block maintenance.
 
 ## 2. Link the issue from the pull request
 
@@ -61,8 +61,10 @@ and closed **30 days** later if nothing changes. Any comment, push, or label
 change resets the timer. Exempt labels:
 
 - Issues: `pinned`, `security`, `confirmed`, `work-in-progress`,
-  `priority: critical`, `priority: high` (repositories may add more).
-- Pull requests: `pinned`, `security`, `work-in-progress`.
+  `priority: critical`, `priority: high`, `ready-for-agent`, `ready-for-human`,
+  `blocked` (repositories may add more).
+- Pull requests: `pinned`, `security`, `work-in-progress`, `ready-for-agent`,
+  `ready-for-human`, `blocked`.
 
 ## Automation
 
@@ -92,3 +94,34 @@ for new releases.
 
 CodeRabbit organization settings live in
 [`tinkerologie/coderabbit`](https://github.com/tinkerologie/coderabbit).
+
+## Free-tier planning and review
+
+Keep GitHub, Copilot, CodeRabbit and Greptile on their approved free entitlements.
+Never enable a trial, metered continuation, recharge or paid scan to obtain a review.
+Use a CodeRabbit plan/review when the repository is eligible and quota is available.
+For an unavailable feature or exhausted quota, record that limitation and write a
+local plan covering the issue, implementation, risks and validation. Perform a
+local code review and run deterministic CI; do not claim an AI review happened.
+Batch related commits and request review once the ready-for-review head is stable.
+Do not repeatedly request reviews after a quota response. Copilot Free PR reviews
+are not part of the required workflow. Greptile is optional and limited to the
+five approved OSS repositories listed in STANDARDS.md.
+
+## Free-plan exceptions and recovery
+
+`ha-aquaro` remains private. GitHub Free cannot enforce its branch rulesets or
+provide organisation Actions secrets/variables to it. Its governance report uses
+its repository GITHUB_TOKEN; manually check CI and conversations before merging.
+Do not copy an organisation-wide app key into it or expose the repository to gain
+free public features. Other public repositories require CI Gate; existing project
+PR Governance checks remain required. Configuration-only repositories use syntax
+and Actions-policy validation instead of application tests.
+
+The sole owner must keep offline account recovery material current. Administrators
+retain an emergency bypass, and the release app retains its existing exceptions.
+Use bypass only for an explicit maintainer-authorised operation and verify the
+resulting main checks. Zero required approvals avoids impossible self-approval.
+GitHub $0 stop-usage budgets, Greptile recharge off/$0 flex cap, and CodeRabbit
+Free/cancelled usage-based reviews must remain in place. Quota exhaustion may pause
+a service; it is never permission to purchase more capacity.

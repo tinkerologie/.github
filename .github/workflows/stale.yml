@@ -16,10 +16,10 @@ on:
         default: 30
       exempt-issue-labels:
         type: string
-        default: "pinned,security,confirmed,work-in-progress,priority: critical,priority: high"
+        default: "pinned,security,confirmed,work-in-progress,priority: critical,priority: high,ready-for-agent,ready-for-human,blocked"
       exempt-pr-labels:
         type: string
-        default: "pinned,security,work-in-progress"
+        default: "pinned,security,work-in-progress,ready-for-agent,ready-for-human,blocked"
       operations-per-run:
         type: number
         default: 100
