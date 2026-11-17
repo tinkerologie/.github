@@ -167,10 +167,12 @@ they enforce.
 
 [governance-manifest.json](governance-manifest.json) records repository profiles,
 required checks and Free-plan exceptions. The weekly Governance Drift workflow
-reads public repository settings and rules and writes one Actions summary; it
+reads public repository metadata and rules and writes one Actions summary; it
 fails on drift without changing settings or opening issues. Billing dashboards
 and private repository exceptions still need owner review; the workflow has no
-billing credentials. Keep standard hosted runners for untrusted public PRs.
+billing credentials. Merge settings not exposed to its read-only token are listed
+for owner verification; they are not claimed as checked. Keep standard hosted
+runners for untrusted public PRs.
 
 Required CI retains existing test coverage thresholds. Codecov patch coverage is
 still a contributor requirement, but its asynchronous status is not universally

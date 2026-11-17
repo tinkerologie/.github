@@ -10,6 +10,8 @@ def api(path):
     return json.loads(subprocess.check_output(["gh", "api", path], text=True))
 
 
+UNAVAILABLE = []
+
 def inspect(expected):
     name = expected["name"]
     if expected["visibility"] == "private":
@@ -20,8 +22,11 @@ def inspect(expected):
     wanted = {"visibility": "public", "default_branch": "main", "allow_squash_merge": True,
               "allow_merge_commit": False, "allow_rebase_merge": False,
               "delete_branch_on_merge": True, "allow_auto_merge": True}
+    hidden = [key for key in wanted if key not in repo]
+    if hidden:
+        UNAVAILABLE.append(f"{name}: " + ", ".join(hidden))
     for key, value in wanted.items():
-        if repo.get(key) != value:
+        if key in repo and repo[key] != value:
             problems.append(f"{name}: {key} is {repo.get(key)!r}; expected {value!r}")
     rules = []
     for summary in api(root + "/rulesets?per_page=100"):
@@ -34,8 +39,13 @@ def inspect(expected):
     for kind in ["pull_request", "deletion", "non_fast_forward", "required_status_checks"]:
         if kind not in types:
             problems.append(f"{name}: missing active {kind} protection")
+    for rule in rules:
+        if rule["type"] == "pull_request":
+            params = rule["parameters"]
+            if params.get("required_approving_review_count") != 0 or not params.get("required_review_thread_resolution") or params.get("allowed_merge_methods") != ["squash"]:
+                problems.append(f"{name}: solo-maintainer PR policy changed")
     checks = {c["context"] for r in rules if r["type"] == "required_status_checks"
-              for c in r["parameters"]["required_status_checks"]}
+              for c in r["parameters"]["required_status_checks"] if c.get("integration_id") == 15368}
     for check in expected["required_checks"]:
         if check not in checks:
             problems.append(f"{name}: missing required {check}")
@@ -54,6 +64,8 @@ def main():
         except (subprocess.CalledProcessError, KeyError, ValueError) as error:
             problems.append(f"{expected['name']}: inspection failed ({type(error).__name__})")
     report = "## Governance drift\n\n" + ("\n".join("- " + p for p in problems) if problems else "All public repository settings and required CI checks match the manifest.")
+    if UNAVAILABLE:
+        report += "\n\nMerge settings hidden from this read-only token (owner verification required):\n" + "\n".join("- " + item for item in UNAVAILABLE)
     report += "\n\nPrivate Free-plan exceptions and third-party billing require owner review. No settings were changed.\n"
     print(report)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
