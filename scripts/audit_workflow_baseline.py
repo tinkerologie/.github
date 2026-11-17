@@ -21,6 +21,10 @@ def inspect_workflow(name, document):
             problems.append(f'{name}/{key}: runner timeout missing')
         if job.get('uses', '').startswith('tinkerologie/.github/.github/workflows/dependabot-auto-merge.yml@') and job.get('with', {}).get('native-auto-merge') is not True:
             problems.append(f'{name}/{key}: public Dependabot caller holds a polling runner')
+        if job.get('uses', '').startswith('tinkerologie/.github/.github/workflows/dependabot-auto-merge.yml@'):
+            policy = document.get('jobs', {}).get('dependency-policy', {})
+            if policy.get('name') != 'Dependency Policy' or policy.get('needs') != 'auto-merge' or policy.get('if') != 'always()':
+                problems.append(f'{name}: required dependency-policy aggregation missing')
         refs = [job['uses']] if 'uses' in job else []
         for step in job.get('steps', []):
             if 'uses' in step:

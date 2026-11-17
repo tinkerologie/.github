@@ -14,7 +14,7 @@ class BaselineTests(unittest.TestCase):
         broken['jobs']['test']['steps'][0] = {'uses': 'actions/upload-artifact@main'}
         self.assertEqual(len(inspect_workflow('ci', broken)), 4)
         self.assertEqual(len(inspect_workflow('issue-labeler.yml', {'permissions': {}, 'on': {'schedule': [{'cron': '17 3 * * *'}]}})), 1)
-        self.assertEqual(len(inspect_workflow('caller', {'permissions': {}, 'jobs': {'merge': {'uses': 'tinkerologie/.github/.github/workflows/dependabot-auto-merge.yml@' + 'a' * 40}}})), 1)
+        self.assertEqual(len(inspect_workflow('caller', {'permissions': {}, 'jobs': {'merge': {'uses': 'tinkerologie/.github/.github/workflows/dependabot-auto-merge.yml@' + 'a' * 40}}})), 2)
         self.assertEqual(inspect_workflow('caller', {'permissions': {}, 'jobs': {'call': {'uses': 'org/repo/.github/workflows/ci.yml@' + 'a' * 40}}}), [])
 
     def test_coverage_fail_open_and_deadlock(self):
