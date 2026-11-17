@@ -149,8 +149,8 @@ The organization label set below is synced to every repository by the
   classify the bump), once the other checks and commit statuses on its head commit have
   finished without a failure (skipped and neutral results are fine). A Codecov check that is still pending is not waited for (patch coverage never
   reports on lock-file-only changes); a Codecov failure blocks the merge. GitHub's
-  built-in auto-merge would not wait: it waits only for required checks, and PR
-  Governance is skipped for Dependabot. Majors and grouped pull requests containing a
+  built-in auto-merge waits for required CI Gate; PR Governance is skipped for
+  Dependabot. This merger additionally waits for other reported check results. Majors and grouped pull requests containing a
   major are left for a person, and open review threads still block the merge. A merge that
   races another push to the default branch is retried. After
   re-running a failed check, re-run the Auto-merge job too (or comment
